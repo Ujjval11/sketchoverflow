@@ -179,7 +179,7 @@ function PracticeContent() {
         <h2 className="text-2xl font-bold mb-2">{selectedCat?.name} · {DIFFICULTY_OPTIONS.find(d => d.value === selectedDifficulty)?.label}</h2>
         <p className="text-muted-foreground mb-8">Select time per image</p>
         <div className="grid grid-cols-3 gap-3">
-          {TIMER_OPTIONS.filter(t => [30, 45, 60, 120, 300, 600].includes(t.value)).map(t => (
+          {TIMER_OPTIONS.filter(t => [30, 60, 120, 300].includes(t.value)).map(t => (
             <button key={t.value} onClick={() => startPractice(t.value)}
               className="rounded-xl border border-border bg-card p-6 hover:border-primary/50 hover:shadow-md transition-all"
             >

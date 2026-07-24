@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { useEffect, useState } from "react"
 import { TIMER_OPTIONS, DIFFICULTY_OPTIONS, CHALLENGE_THEMES, CHALLENGE_TYPES } from "@/lib/utils/constants"
 
-const DURATIONS = TIMER_OPTIONS.filter((d) => [30, 45, 60, 120, 300, 600].includes(d.value))
+const DURATIONS = TIMER_OPTIONS.filter((d) => [30, 60, 120, 300].includes(d.value))
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState("categories")

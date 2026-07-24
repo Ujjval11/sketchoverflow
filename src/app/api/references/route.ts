@@ -23,30 +23,29 @@ export async function GET(request: Request) {
     }
 
     if (categorySlug) {
-      const { data: cat, error: catErr } = await supabaseAdmin
+      const { data: cat } = await supabaseAdmin
         .from("Category")
         .select("id")
         .eq("slug", categorySlug)
         .maybeSingle()
-      if (catErr) {
-        return NextResponse.json({ error: "Category lookup failed: " + catErr.message }, { status: 500 })
-      }
-      if (!cat) {
+      if (cat) {
+        filters.categoryId = cat.id
+      } else {
         return NextResponse.json({ images: [], total: 0, limit, offset })
       }
-      filters.categoryId = cat.id
     }
 
-    const findManyPromise = prisma.referenceImage.findMany({
-      where: filters,
-      take: limit,
-      skip: offset,
-      orderBy: { uploadedAt: "desc" },
-    })
-    const countPromise = prisma.referenceImage.count({ where: filters })
-    const [images, total] = await Promise.all([findManyPromise, countPromise])
+    const [images, total] = await Promise.all([
+      prisma.referenceImage.findMany({
+        where: filters,
+        take: limit,
+        skip: offset,
+        orderBy: { uploadedAt: "desc" },
+      }),
+      prisma.referenceImage.count({ where: filters }),
+    ])
     return NextResponse.json({ images, total, limit, offset })
   } catch (e: any) {
-    return NextResponse.json({ error: e.message || "Failed to fetch references", stack: e.stack }, { status: 500 })
+    return NextResponse.json({ error: e.message || "Failed to fetch references" }, { status: 500 })
   }
 }

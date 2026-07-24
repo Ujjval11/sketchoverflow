@@ -16,9 +16,10 @@ function shuffle<T>(arr: T[]): T[] {
 
 export function Hero() {
   const [images, setImages] = useState<string[]>([])
+  const [showIdx, setShowIdx] = useState(0)
 
   useEffect(() => {
-    fetch("/api/references?limit=20")
+    fetch("/api/references?limit=50")
       .then((r) => r.json())
       .then((d) => {
         const urls = (d.images || []).map((img: any) => img.url)
@@ -26,6 +27,14 @@ export function Hero() {
       })
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (images.length === 0) return
+    const timer = setInterval(() => {
+      setShowIdx((prev) => (prev + 1) % images.length)
+    }, 5000)
+    return () => clearInterval(timer)
+  }, [images])
 
   return (
     <section className="relative overflow-hidden">
@@ -53,18 +62,14 @@ export function Hero() {
           </motion.div>
 
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.8, delay: 0.2 }} className="relative">
-            <div className="aspect-[4/3] rounded-2xl overflow-hidden bg-muted">
-              {images.length >= 4 ? (
-                <div className="grid grid-cols-2 grid-rows-2 h-full">
-                  {images.slice(0, 4).map((url, i) => (
-                    <div key={i} className="overflow-hidden">
-                      <img src={url} alt="" className="w-full h-full object-cover" />
-                    </div>
+            <div className="aspect-[4/3] rounded-2xl overflow-hidden bg-muted relative">
+              {images.length > 0 ? (
+                <div className="relative h-full w-full">
+                  {images.slice(0, 10).map((url, i) => (
+                    <img key={i} src={url} alt=""
+                      className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${i === showIdx ? "opacity-100" : "opacity-0"}`}
+                    />
                   ))}
-                </div>
-              ) : images.length > 0 ? (
-                <div className="flex items-center justify-center h-full">
-                  <img src={images[0]} alt="" className="w-full h-full object-cover" />
                 </div>
               ) : null}
             </div>
