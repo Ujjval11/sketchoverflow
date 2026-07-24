@@ -19,7 +19,7 @@ export function Hero() {
   const [showIdx, setShowIdx] = useState(0)
 
   useEffect(() => {
-    fetch("/api/references?limit=50")
+    fetch("/api/showcase")
       .then((r) => r.json())
       .then((d) => {
         const urls = (d.images || []).map((img: any) => img.url)

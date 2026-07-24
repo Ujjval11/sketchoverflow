@@ -35,12 +35,16 @@ export default function AdminPage() {
   })
 
   const [apiError, setApiError] = useState("")
+  const [showcaseImages, setShowcaseImages] = useState<any[]>([])
+  const [showcaseUploading, setShowcaseUploading] = useState(false)
+  const [showcaseFile, setShowcaseFile] = useState<File | null>(null)
 
   useEffect(() => {
     if (activeTab === "categories") loadCategories()
     if (activeTab === "analytics") loadAnalytics()
     if (activeTab === "challenges") loadChallenges()
     if (activeTab === "articles") loadArticles()
+    if (activeTab === "display") loadShowcase()
   }, [activeTab])
 
   async function loadCategories() {
@@ -275,8 +279,39 @@ export default function AdminPage() {
     loadArticles()
   }
 
+  async function loadShowcase() {
+    try {
+      const r = await fetch("/api/showcase")
+      const d = await r.json()
+      if (d.error) { setApiError(d.error); return }
+      setShowcaseImages(d.images || [])
+    } catch { setApiError("Failed to load showcase") }
+  }
+
+  async function uploadShowcase() {
+    if (!showcaseFile) return
+    setShowcaseUploading(true)
+    try {
+      const form = new FormData()
+      form.set("file", showcaseFile)
+      const r = await fetch("/api/showcase", { method: "POST", body: form })
+      const d = await r.json()
+      if (!r.ok) { setApiError(d.error || "Upload failed"); return }
+      setShowcaseFile(null)
+      loadShowcase()
+    } catch (e: any) { setApiError(e.message || "Upload failed") }
+    finally { setShowcaseUploading(false) }
+  }
+
+  async function deleteShowcase(name: string) {
+    if (!confirm("Delete this showcase image?")) return
+    await fetch("/api/showcase", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) })
+    loadShowcase()
+  }
+
   const tabs = [
     { key: "categories", label: "Categories & Images" },
+    { key: "display", label: "Display" },
     { key: "challenges", label: "Challenges" },
     { key: "articles", label: "Articles" },
     { key: "analytics", label: "Analytics" },
@@ -650,6 +685,40 @@ export default function AdminPage() {
               <p className="text-sm text-muted-foreground">No articles yet. Create your first one!</p>
             )}
           </div>
+        </div>
+      )}
+
+      {activeTab === "display" && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">{showcaseImages.length} showcase images</p>
+          </div>
+          <div className="flex items-end gap-3 rounded-xl border border-border bg-card p-4">
+            <div className="space-y-1 flex-1">
+              <Label>Upload Image</Label>
+              <Input type="file" accept="image/*" onChange={(e) => setShowcaseFile(e.target.files?.[0] || null)} />
+            </div>
+            <Button onClick={uploadShowcase} disabled={!showcaseFile || showcaseUploading}>
+              {showcaseUploading ? "Uploading..." : "Upload"}
+            </Button>
+          </div>
+          {showcaseImages.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              {showcaseImages.map((img: any) => (
+                <div key={img.name} className="group relative rounded-lg overflow-hidden border border-border bg-muted/30">
+                  <div className="aspect-[4/3] flex items-center justify-center bg-muted/20">
+                    <img src={img.url} alt="" className="w-full h-full object-contain" />
+                  </div>
+                  <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => deleteShowcase(img.name)}
+                      className="text-xs px-1.5 py-0.5 rounded bg-error/80 text-white">✕</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No showcase images yet.</p>
+          )}
         </div>
       )}
 
