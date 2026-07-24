@@ -1,6 +1,7 @@
 "use client"
 
 import { Hero } from "@/components/landing/hero"
+import { ArticlesSection } from "@/components/landing/articles-section"
 import { motion } from "framer-motion"
 
 const testimonials = [
@@ -20,6 +21,7 @@ export default function HomePage() {
   return (
     <div>
       <Hero />
+      <ArticlesSection />
 
       <section className="border-t border-border py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
