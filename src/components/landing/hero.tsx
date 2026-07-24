@@ -67,7 +67,7 @@ export function Hero() {
                 <div className="relative h-full w-full">
                   {images.slice(0, 10).map((url, i) => (
                     <img key={i} src={url} alt=""
-                      className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${i === showIdx ? "opacity-100" : "opacity-0"}`}
+                      className={`absolute inset-0 w-full h-full object-contain bg-muted/30 transition-opacity duration-700 ${i === showIdx ? "opacity-100" : "opacity-0"}`}
                     />
                   ))}
                 </div>

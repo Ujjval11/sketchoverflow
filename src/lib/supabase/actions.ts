@@ -15,7 +15,7 @@ export async function signInWithEmail(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) return { error: error.message }
   revalidatePath("/", "layout")
-  redirect(redirectTo)
+  return { success: true, redirectTo }
 }
 
 export async function signInWithGoogle(formData: FormData) {
@@ -43,6 +43,11 @@ export async function signUp(formData: FormData) {
   const email = formData.get("email") as string
   const password = formData.get("password") as string
   const name = formData.get("name") as string
+  const bio = formData.get("bio") as string
+  const goals = formData.get("goals") as string
+  const institution = formData.get("institution") as string
+  const educationLevel = formData.get("educationLevel") as string
+  const city = formData.get("city") as string
 
   const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name } } })
   if (error) return { error: error.message }
@@ -52,10 +57,15 @@ export async function signUp(formData: FormData) {
       update: { name, email },
       create: { id: data.user.id, email, name },
     })
+    await prisma.profile.upsert({
+      where: { userId: data.user.id },
+      update: { bio, goals, institution, educationLevel, city },
+      create: { userId: data.user.id, bio, goals, institution, educationLevel, city },
+    })
     await supabaseAdmin.auth.admin.updateUserById(data.user.id, { email_confirm: true })
   }
   revalidatePath("/", "layout")
-  redirect("/dashboard")
+  return { success: true }
 }
 
 export async function signOut() {

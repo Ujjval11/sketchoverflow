@@ -17,7 +17,7 @@ export default function AdminPage() {
   const [catForm, setCatForm] = useState({ name: "", description: "", sortOrder: 0, id: "" })
   const [showCatForm, setShowCatForm] = useState(false)
   const [sectionOpen, setSectionOpen] = useState<Record<string, boolean>>({})
-  const [sectionFiles, setSectionFiles] = useState<Record<string, File | null>>({})
+  const [sectionFiles, setSectionFiles] = useState<Record<string, FileList | null>>({})
   const [sectionUploading, setSectionUploading] = useState<string | null>(null)
 
   const [challengeForm, setChallengeForm] = useState<any>({
@@ -111,26 +111,30 @@ export default function AdminPage() {
 
   async function uploadToSection(categoryId: string, difficulty: string, duration: number) {
     const key = `${categoryId}-${difficulty}-${duration}`
-    const file = sectionFiles[key]
-    if (!file) return
+    const files = sectionFiles[key]
+    if (!files || files.length === 0) return
     setSectionUploading(key)
-    try {
-      const form = new FormData()
-      form.set("file", file)
-      form.set("categoryId", categoryId)
-      form.set("isPublished", "true")
-      form.set("duration", String(duration))
-      form.set("difficulty", difficulty)
-      const r = await fetch("/api/admin/images", { method: "POST", body: form })
-      const d = await r.json()
-      if (!r.ok) { setApiError(d.error || "Upload failed"); return }
-      setSectionFiles((prev) => ({ ...prev, [key]: null }))
-      loadCategories()
-    } catch (e: any) {
-      setApiError(e.message || "Upload failed")
-    } finally {
-      setSectionUploading(null)
+    let ok = true
+    for (let i = 0; i < files.length; i++) {
+      try {
+        const form = new FormData()
+        form.set("file", files[i])
+        form.set("categoryId", categoryId)
+        form.set("isPublished", "true")
+        form.set("duration", String(duration))
+        form.set("difficulty", difficulty)
+        const r = await fetch("/api/admin/images", { method: "POST", body: form })
+        const d = await r.json()
+        if (!r.ok) { setApiError(d.error || "Upload failed"); ok = false; break }
+      } catch (e: any) {
+        setApiError(e.message || "Upload failed")
+        ok = false
+        break
+      }
     }
+    if (ok) setSectionFiles((prev) => ({ ...prev, [key]: null }))
+    loadCategories()
+    setSectionUploading(null)
   }
 
   async function togglePublish(image: any) {
@@ -391,8 +395,8 @@ export default function AdminPage() {
                               <div className="px-2 pb-2">
                                 <div className="flex items-end gap-2 p-2 rounded-lg bg-muted/30">
                                   <div className="space-y-1 flex-1 min-w-0">
-                                    <Label className="text-[10px]">File</Label>
-                                    <Input type="file" accept="image/*" className="text-xs h-8" onChange={(e) => setSectionFiles((prev) => ({ ...prev, [key]: e.target.files?.[0] || null }))} />
+                                    <Label className="text-[10px]">Files</Label>
+                                    <Input type="file" accept="image/*" multiple className="text-xs h-8" onChange={(e) => setSectionFiles((prev) => ({ ...prev, [key]: e.target.files || null }))} />
                                   </div>
                                   <Button size="sm" onClick={() => uploadToSection(cat.id, diff.value, dur.value)} disabled={!hasFile || isUploading}>
                                     {isUploading ? "..." : "Upload"}

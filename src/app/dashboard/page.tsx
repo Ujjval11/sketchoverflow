@@ -1,7 +1,7 @@
 "use client"
 
 import { useAuth } from "@/components/auth/auth-provider"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { useEffect, useState } from "react"
 
 export default function DashboardPage() {
@@ -15,6 +15,13 @@ export default function DashboardPage() {
       .catch(() => {})
   }, [])
 
+  function fmtTime(seconds: number): string {
+    const h = Math.floor(seconds / 3600)
+    const m = Math.floor((seconds % 3600) / 60)
+    if (h > 0) return `${h}h ${m}m`
+    return `${m}m`
+  }
+
   if (!user) return null
 
   return (
@@ -24,22 +31,38 @@ export default function DashboardPage() {
         <p className="text-muted-foreground mt-1">Welcome back, {user.name || user.email}</p>
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card><CardContent className="p-6">
-          <p className="text-sm text-muted-foreground">Total XP</p>
-          <p className="text-3xl font-bold">{stats?.totalXP || 0}</p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+        <Card><CardContent className="p-4 text-center">
+          <p className="text-2xl font-bold">{stats?.totalXP || 0}</p>
+          <p className="text-xs text-muted-foreground">Total XP</p>
         </CardContent></Card>
-        <Card><CardContent className="p-6">
-          <p className="text-sm text-muted-foreground">Level</p>
-          <p className="text-3xl font-bold">{stats?.level || 1}</p>
+        <Card><CardContent className="p-4 text-center">
+          <p className="text-2xl font-bold">{stats?.level || 1}</p>
+          <p className="text-xs text-muted-foreground">Level</p>
         </CardContent></Card>
-        <Card><CardContent className="p-6">
-          <p className="text-sm text-muted-foreground">Sessions</p>
-          <p className="text-3xl font-bold">{stats?.totalSessions || 0}</p>
+        <Card><CardContent className="p-4 text-center">
+          <p className="text-2xl font-bold">{stats?.coins || 0}</p>
+          <p className="text-xs text-muted-foreground">Coins</p>
         </CardContent></Card>
-        <Card><CardContent className="p-6">
-          <p className="text-sm text-muted-foreground">Streak</p>
-          <p className="text-3xl font-bold">{stats?.streak || 0} days</p>
+        <Card><CardContent className="p-4 text-center">
+          <p className="text-2xl font-bold">{stats?.totalSessions || 0}</p>
+          <p className="text-xs text-muted-foreground">Sessions</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-4 text-center">
+          <p className="text-2xl font-bold">{stats?.totalTimeSpent ? fmtTime(stats.totalTimeSpent) : "0m"}</p>
+          <p className="text-xs text-muted-foreground">Time Spent</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-4 text-center">
+          <p className="text-2xl font-bold">{stats?.drawingsCount || 0}</p>
+          <p className="text-xs text-muted-foreground">Drawings</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-4 text-center">
+          <p className="text-2xl font-bold">{stats?.categoriesAccessed || 0}</p>
+          <p className="text-xs text-muted-foreground">Categories</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-4 text-center">
+          <p className="text-2xl font-bold">{stats?.streak || 0}</p>
+          <p className="text-xs text-muted-foreground">Day Streak</p>
         </CardContent></Card>
       </div>
 
@@ -55,6 +78,20 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {stats?.categoryBreakdown?.length > 0 && (
+        <div>
+          <h2 className="text-xl font-bold mb-4">Categories Practiced</h2>
+          <div className="flex flex-wrap gap-2">
+            {stats.categoryBreakdown.map((c: any) => (
+              <span key={c.category} className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary">
+                {c.category}
+                <span className="inline-flex items-center justify-center rounded-full bg-primary/20 px-1.5 text-xs font-bold">{c.sessions}</span>
+              </span>
+            ))}
+          </div>
+        </div>
       )}
 
       <div>

@@ -1,16 +1,17 @@
 "use client"
 
 import { Suspense } from "react"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import Link from "next/link"
-import { signInWithEmail, signInWithGoogle, signInWithGithub } from "@/lib/supabase/actions"
+import { signInWithEmail, signInWithGoogle } from "@/lib/supabase/actions"
 import { useState } from "react"
 
 function LoginForm() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get("redirect") || ""
   const [error, setError] = useState("")
@@ -19,6 +20,7 @@ function LoginForm() {
     if (redirect) form.set("redirect", redirect)
     const res = await signInWithEmail(form)
     if (res?.error) setError(res.error)
+    if (res?.success) router.push(res.redirectTo || "/dashboard")
   }
 
   return (
@@ -47,16 +49,10 @@ function LoginForm() {
           <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">Or continue with</span></div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <form action={signInWithGoogle}>
-            <input type="hidden" name="redirect" value={redirect} />
-            <Button type="submit" variant="outline" className="w-full">Google</Button>
-          </form>
-          <form action={signInWithGithub}>
-            <input type="hidden" name="redirect" value={redirect} />
-            <Button type="submit" variant="outline" className="w-full">GitHub</Button>
-          </form>
-        </div>
+        <form action={signInWithGoogle}>
+          <input type="hidden" name="redirect" value={redirect} />
+          <Button type="submit" variant="outline" className="w-full">Google</Button>
+        </form>
 
         <p className="text-center text-sm text-muted-foreground">
           Don&apos;t have an account? <Link href="/register" className="text-primary hover:underline">Sign up</Link>
