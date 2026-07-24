@@ -65,6 +65,7 @@ async function main() {
 
   const { data: existing } = await supabaseAdmin.auth.admin.listUsers()
   const exists = existing?.users?.find(u => u.email === "demo@sketchflow.app")
+  let uid = null
   if (!exists) {
     const { data, error } = await supabaseAdmin.auth.admin.createUser({
       email: "demo@sketchflow.app",
@@ -74,16 +75,21 @@ async function main() {
     if (error) {
       console.error("Auth create error:", error.message)
     } else {
-      const uid = data.user.id
-      await prisma.user.upsert({
-        where: { id: uid },
-        update: { role: "admin" },
-        create: { id: uid, email: "demo@sketchflow.app", name: "Demo Admin", role: "admin" },
-      })
-      console.log("Seeded demo admin user")
+      uid = data.user.id
+      console.log("Created demo auth user")
     }
   } else {
-    console.log("Demo user already exists")
+    uid = exists.id
+    console.log("Demo auth user already exists")
+  }
+
+  if (uid) {
+    await prisma.user.upsert({
+      where: { id: uid },
+      update: { role: "admin" },
+      create: { id: uid, email: "demo@sketchflow.app", name: "Demo Admin", role: "admin" },
+    })
+    console.log("Ensured demo admin user in DB")
   }
 
   const challengeThemes = [
