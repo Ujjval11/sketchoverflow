@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
+import { headers } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import { supabaseAdmin } from "@/lib/supabase/admin"
 import { prisma } from "@/lib/prisma/db"
@@ -10,30 +11,22 @@ export async function signInWithEmail(formData: FormData) {
   const supabase = await createClient()
   const email = formData.get("email") as string
   const password = formData.get("password") as string
-  const redirectTo = (formData.get("redirect") as string) || "/dashboard"
+  const redirectTo = (formData.get("redirect") as string) || "/"
 
   const { error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) return { error: error.message }
   revalidatePath("/", "layout")
-  return { success: true, redirectTo }
+  redirect(redirectTo)
 }
 
 export async function signInWithGoogle(formData: FormData) {
   const supabase = await createClient()
-  const redirectTo = (formData.get("redirect") as string) || "/dashboard"
+  const redirectTo = (formData.get("redirect") as string) || "/"
+  const host = (await headers()).get("host") || "sketchflow-amber.vercel.app"
+  const callbackUrl = `https://${host}/api/auth/callback?next=${redirectTo}`
   const { data } = await supabase.auth.signInWithOAuth({
     provider: "google",
-    options: { redirectTo: `${process.env.NEXT_PUBLIC_SUPABASE_URL!}/auth/v1/callback?next=${redirectTo}` },
-  })
-  if (data.url) redirect(data.url)
-}
-
-export async function signInWithGithub(formData: FormData) {
-  const supabase = await createClient()
-  const redirectTo = (formData.get("redirect") as string) || "/dashboard"
-  const { data } = await supabase.auth.signInWithOAuth({
-    provider: "github",
-    options: { redirectTo: `${process.env.NEXT_PUBLIC_SUPABASE_URL!}/auth/v1/callback?next=${redirectTo}` },
+    options: { redirectTo: callbackUrl },
   })
   if (data.url) redirect(data.url)
 }
@@ -65,7 +58,7 @@ export async function signUp(formData: FormData) {
     await supabaseAdmin.auth.admin.updateUserById(data.user.id, { email_confirm: true })
   }
   revalidatePath("/", "layout")
-  return { success: true }
+  redirect("/")
 }
 
 export async function signOut() {
@@ -90,7 +83,7 @@ export async function updatePassword(formData: FormData) {
   const password = formData.get("password") as string
   const { error } = await supabase.auth.updateUser({ password })
   if (error) return { error: error.message }
-  redirect("/dashboard")
+  redirect("/")
 }
 
 export async function updateProfile(formData: FormData) {

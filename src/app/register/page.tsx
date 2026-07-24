@@ -5,18 +5,15 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { signUp } from "@/lib/supabase/actions"
 import { useState } from "react"
 
 export default function RegisterPage() {
   const [error, setError] = useState("")
-  const router = useRouter()
 
   async function handleSubmit(form: FormData) {
     const res = await signUp(form)
     if (res?.error) setError(res.error)
-    if (res?.success) router.push("/dashboard")
   }
 
   return (

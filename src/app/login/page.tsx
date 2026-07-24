@@ -1,7 +1,7 @@
 "use client"
 
 import { Suspense } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,7 +11,6 @@ import { signInWithEmail, signInWithGoogle } from "@/lib/supabase/actions"
 import { useState } from "react"
 
 function LoginForm() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get("redirect") || ""
   const [error, setError] = useState("")
@@ -20,7 +19,6 @@ function LoginForm() {
     if (redirect) form.set("redirect", redirect)
     const res = await signInWithEmail(form)
     if (res?.error) setError(res.error)
-    if (res?.success) router.push(res.redirectTo || "/dashboard")
   }
 
   return (
