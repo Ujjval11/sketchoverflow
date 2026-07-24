@@ -34,6 +34,8 @@ export default function AdminPage() {
     id: "", title: "", slug: "", excerpt: "", content: "", imageUrl: "", isPublished: true, sortOrder: 0, file: null,
   })
 
+  const [apiError, setApiError] = useState("")
+
   useEffect(() => {
     if (activeTab === "categories") loadCategories()
     if (activeTab === "analytics") loadAnalytics()
@@ -42,39 +44,49 @@ export default function AdminPage() {
   }, [activeTab])
 
   async function loadCategories() {
-    const r = await fetch("/api/admin/categories")
-    const d = await r.json()
-    const cats = d.categories || []
-    const withImages = await Promise.all(
-      cats.map(async (cat: any) => {
-        const ir = await fetch(`/api/admin/images?categoryId=${cat.id}`)
-        const id = await ir.json()
-        const allImages = id.images || []
-        const sectionImages: Record<string, Record<number, any[]>> = {}
-        for (const diff of DIFFICULTY_OPTIONS) {
-          sectionImages[diff.value] = {}
-          for (const dur of DURATIONS) {
-            sectionImages[diff.value][dur.value] = allImages.filter(
-              (img: any) => img.difficulty === diff.value && img.duration === dur.value
-            )
+    try {
+      const r = await fetch("/api/admin/categories")
+      const d = await r.json()
+      if (d.error) { setApiError(d.error); return }
+      const cats = d.categories || []
+      const withImages = await Promise.all(
+        cats.map(async (cat: any) => {
+          const ir = await fetch(`/api/admin/images?categoryId=${cat.id}`)
+          const id = await ir.json()
+          if (id.error) { setApiError(id.error); return cat }
+          const allImages = id.images || []
+          const sectionImages: Record<string, Record<number, any[]>> = {}
+          for (const diff of DIFFICULTY_OPTIONS) {
+            sectionImages[diff.value] = {}
+            for (const dur of DURATIONS) {
+              sectionImages[diff.value][dur.value] = allImages.filter(
+                (img: any) => img.difficulty === diff.value && img.duration === dur.value
+              )
+            }
           }
-        }
-        return { ...cat, images: allImages, sectionImages }
-      })
-    )
-    setCategories(withImages)
+          return { ...cat, images: allImages, sectionImages }
+        })
+      )
+      setCategories(withImages)
+    } catch (e: any) { setApiError("Failed to load categories") }
   }
 
   async function loadAnalytics() {
-    const r = await fetch("/api/admin/analytics")
-    const d = await r.json()
-    setAnalytics(d)
+    try {
+      const r = await fetch("/api/admin/analytics")
+      const d = await r.json()
+      if (d.error) { setApiError(d.error); return }
+      setAnalytics(d)
+    } catch { setApiError("Failed to load analytics") }
   }
 
   async function loadChallenges() {
-    const r = await fetch("/api/admin/challenges")
-    const d = await r.json()
-    setChallenges(d.challenges || [])
+    try {
+      const r = await fetch("/api/admin/challenges")
+      const d = await r.json()
+      if (d.error) { setApiError(d.error); return }
+      setChallenges(d.challenges || [])
+    } catch { setApiError("Failed to load challenges") }
   }
 
   async function saveCategory(e: React.FormEvent) {
@@ -205,9 +217,12 @@ export default function AdminPage() {
   }
 
   async function loadArticles() {
-    const r = await fetch("/api/admin/articles")
-    const d = await r.json()
-    setArticles(d.articles || [])
+    try {
+      const r = await fetch("/api/admin/articles")
+      const d = await r.json()
+      if (d.error) { setApiError(d.error); return }
+      setArticles(d.articles || [])
+    } catch { setApiError("Failed to load articles") }
   }
 
   async function saveArticle(e: React.FormEvent) {
@@ -272,6 +287,13 @@ export default function AdminPage() {
           </button>
         ))}
       </div>
+
+      {apiError && (
+        <div className="rounded-lg bg-error/10 border border-error/30 p-3 text-sm text-error flex items-center justify-between">
+          <span>{apiError}</span>
+          <button onClick={() => setApiError("")} className="text-error/60 hover:text-error">✕</button>
+        </div>
+      )}
 
       {activeTab === "categories" && (
         <div className="space-y-6">

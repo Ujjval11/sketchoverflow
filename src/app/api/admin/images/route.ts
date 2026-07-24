@@ -13,18 +13,25 @@ async function checkAdmin() {
 }
 
 export async function GET(request: Request) {
-  const admin = await checkAdmin()
-  if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-  const { searchParams } = new URL(request.url)
-  const categoryId = searchParams.get("categoryId")
-  const where = categoryId ? { categoryId } : {}
-  const images = await prisma.referenceImage.findMany({
-    where,
-    include: { category: true },
-    orderBy: { uploadedAt: "desc" },
-    take: 200,
-  })
-  return NextResponse.json({ images })
+  try {
+    const admin = await checkAdmin()
+    if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    const { searchParams } = new URL(request.url)
+    const categoryId = searchParams.get("categoryId")
+    const where = categoryId ? { categoryId } : {}
+    const images = await prisma.referenceImage.findMany({
+      where,
+      orderBy: { uploadedAt: "desc" },
+      take: 200,
+    })
+    const enriched = await Promise.all((images as any[]).map(async (img) => {
+      const category = await prisma.category.findUnique({ where: { id: img.categoryId } })
+      return { ...img, category }
+    }))
+    return NextResponse.json({ images: enriched })
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message || "Internal error" }, { status: 500 })
+  }
 }
 
 export async function POST(request: Request) {

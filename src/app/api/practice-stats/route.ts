@@ -11,50 +11,68 @@ export async function GET() {
   try {
     const dbUser = await prisma.user.findUnique({
       where: { id: user.id },
-      include: {
-        _count: { select: { practiceSessions: true } },
-        practiceSessions: {
-          orderBy: { completedAt: "desc" },
-          take: 10,
-          include: { reference: { select: { category: { select: { name: true } } } } },
-        },
-        achievements: { include: { achievement: true } },
-      },
+      select: { xp: true, level: true, streak: true, coins: true },
     })
-
     if (!dbUser) return NextResponse.json({ error: "User not found" }, { status: 404 })
 
-    const sessionsByCategory: Record<string, number> = {}
+    const totalSessions = await prisma.practiceSession.count({ where: { userId: user.id } })
+
+    const recentSessionsRaw = await prisma.practiceSession.findMany({
+      where: { userId: user.id },
+      orderBy: { completedAt: "desc" },
+      take: 10,
+    })
+    const recentSessions = await Promise.all(recentSessionsRaw.map(async (s: any) => {
+      let categoryName = "Unknown"
+      if (s.referenceId) {
+        const ref = await prisma.referenceImage.findUnique({ where: { id: s.referenceId }, select: { categoryId: true } })
+        if (ref) {
+          const cat = await prisma.category.findUnique({ where: { id: ref.categoryId }, select: { name: true } })
+          if (cat) categoryName = cat.name
+        }
+      }
+      return {
+        id: s.id,
+        duration: s.duration,
+        completedAt: s.completedAt,
+        isSkipped: s.isSkipped,
+        category: categoryName,
+      }
+    }))
+
     const allSessions = await prisma.practiceSession.findMany({
       where: { userId: user.id },
-      include: { reference: { select: { category: { select: { name: true } } } } },
     })
+    const sessionsByCategory: Record<string, number> = {}
     for (const s of allSessions) {
-      const name = s.reference.category.name
-      sessionsByCategory[name] = (sessionsByCategory[name] || 0) + 1
+      if (s.referenceId) {
+        const ref = await prisma.referenceImage.findUnique({ where: { id: s.referenceId }, select: { categoryId: true } })
+        if (ref) {
+          const cat = await prisma.category.findUnique({ where: { id: ref.categoryId }, select: { name: true } })
+          if (cat) {
+            sessionsByCategory[cat.name] = (sessionsByCategory[cat.name] || 0) + 1
+          }
+        }
+      }
     }
+
+    const uaRaw = await prisma.userAchievement.findMany({
+      where: { userId: user.id },
+    })
+    const achievements = await Promise.all(uaRaw.map(async (ua: any) => {
+      const ach = await prisma.achievement.findUnique({ where: { id: ua.achievementId } })
+      return ach ? { id: ach.id, name: ach.name, description: ach.description, icon: ach.icon, unlockedAt: ua.unlockedAt } : null
+    }))
 
     return NextResponse.json({
       totalXP: dbUser.xp,
       level: dbUser.level,
       streak: dbUser.streak,
-      totalSessions: dbUser._count.practiceSessions,
+      totalSessions,
       xpProgress: getXPProgress(dbUser.xp),
-      recentSessions: dbUser.practiceSessions.map((s) => ({
-        id: s.id,
-        duration: s.duration,
-        completedAt: s.completedAt,
-        isSkipped: s.isSkipped,
-        category: s.reference.category.name,
-      })),
+      recentSessions,
       categoryBreakdown: Object.entries(sessionsByCategory).map(([category, sessions]) => ({ category, sessions })),
-      achievements: dbUser.achievements.map((ua) => ({
-        id: ua.achievement.id,
-        name: ua.achievement.name,
-        description: ua.achievement.description,
-        icon: ua.achievement.icon,
-        unlockedAt: ua.unlockedAt,
-      })),
+      achievements: achievements.filter(Boolean),
     })
   } catch {
     return NextResponse.json({ error: "Failed" }, { status: 500 })

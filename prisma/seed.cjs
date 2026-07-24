@@ -84,6 +84,9 @@ async function main() {
   }
 
   if (uid) {
+    await supabaseAdmin.auth.admin.updateUserById(uid, {
+      user_metadata: { role: "admin" },
+    })
     await prisma.user.upsert({
       where: { id: uid },
       update: { role: "admin" },

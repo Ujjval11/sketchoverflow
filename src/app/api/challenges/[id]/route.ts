@@ -6,17 +6,21 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const { id } = await params
     const challenge = await prisma.challenge.findUnique({
       where: { id },
-      include: {
-        _count: { select: { participants: true } },
-        participants: {
-          include: { user: { select: { id: true, name: true, avatarUrl: true } } },
-          orderBy: [{ score: "desc" }, { completedAt: "asc" }],
-        },
-      },
     })
     if (!challenge) return NextResponse.json({ error: "Not found" }, { status: 404 })
-    return NextResponse.json({ challenge })
-  } catch {
-    return NextResponse.json({ error: "Failed" }, { status: 500 })
+
+    const participantCount = await prisma.challengeParticipant.count({ where: { challengeId: id } })
+    const participants = await prisma.challengeParticipant.findMany({
+      where: { challengeId: id },
+      orderBy: [{ score: "desc" }, { completedAt: "asc" }],
+    })
+    const participantsWithUser = await Promise.all((participants as any[]).map(async (p) => {
+      const user = await prisma.user.findUnique({ where: { id: p.userId }, select: "id, name, avatarUrl" })
+      return { ...p, user }
+    }))
+
+    return NextResponse.json({ challenge: { ...challenge, _count: { participants: participantCount }, participants: participantsWithUser } })
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message || "Failed" }, { status: 500 })
   }
 }

@@ -23,23 +23,34 @@ export async function GET(request: Request) {
     if (id) {
       const challenge = await prisma.challenge.findUnique({
         where: { id },
-        include: {
-          participants: {
-            include: { user: { select: { name: true, email: true, avatarUrl: true } } },
-            orderBy: { score: "desc" },
-          },
-          reference: true,
-        },
       })
       if (!challenge) return NextResponse.json({ error: "Not found" }, { status: 404 })
-      return NextResponse.json({ challenge })
+
+      const participants = await prisma.challengeParticipant.findMany({
+        where: { challengeId: id },
+        orderBy: { score: "desc" },
+      })
+      const participantsWithUser = await Promise.all((participants as any[]).map(async (p) => {
+        const user = await prisma.user.findUnique({ where: { id: p.userId }, select: "name, email, avatarUrl" })
+        return { ...p, user }
+      }))
+
+      let reference = null
+      if ((challenge as any).referenceId) {
+        reference = await prisma.referenceImage.findUnique({ where: { id: (challenge as any).referenceId } })
+      }
+
+      return NextResponse.json({ challenge: { ...challenge, participants: participantsWithUser, reference } })
     }
 
     const challenges = await prisma.challenge.findMany({
       orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
-      include: { _count: { select: { participants: true } } },
     })
-    return NextResponse.json({ challenges })
+    const enriched = await Promise.all((challenges as any[]).map(async (c) => ({
+      ...c,
+      _count: { participants: await prisma.challengeParticipant.count({ where: { challengeId: c.id } }) },
+    })))
+    return NextResponse.json({ challenges: enriched })
   } catch (e: any) {
     return NextResponse.json({ error: e.message || "Internal error" }, { status: 500 })
   }

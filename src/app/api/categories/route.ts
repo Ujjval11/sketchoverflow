@@ -5,18 +5,17 @@ export async function GET() {
   try {
     const categories = await prisma.category.findMany({
       orderBy: { sortOrder: "asc" },
-      include: { _count: { select: { images: { where: { isPublished: true } } } } },
     })
-    const result = categories.map((c) => ({
+    const result = await Promise.all(categories.map(async (c: any) => ({
       id: c.id,
       name: c.name,
       slug: c.slug,
       description: c.description,
-      imageCount: c._count.images,
+      imageCount: await prisma.referenceImage.count({ where: { categoryId: c.id, isPublished: true } }),
       sortOrder: c.sortOrder,
-    }))
+    })))
     return NextResponse.json({ categories: result })
-  } catch {
-    return NextResponse.json({ error: "Failed" }, { status: 500 })
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message || "Failed" }, { status: 500 })
   }
 }

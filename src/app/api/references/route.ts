@@ -16,7 +16,6 @@ export async function GET(request: Request) {
     const [images, total] = await Promise.all([
       prisma.referenceImage.findMany({
         where: filters,
-        include: { category: true },
         take: limit,
         skip: offset,
         orderBy: { uploadedAt: "desc" },
@@ -24,7 +23,7 @@ export async function GET(request: Request) {
       prisma.referenceImage.count({ where: filters }),
     ])
     return NextResponse.json({ images, total, limit, offset })
-  } catch {
-    return NextResponse.json({ error: "Failed to fetch references" }, { status: 500 })
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message || "Failed to fetch references" }, { status: 500 })
   }
 }

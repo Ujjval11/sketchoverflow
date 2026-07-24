@@ -25,18 +25,19 @@ export async function GET(request: Request) {
     const id = searchParams.get("id")
 
     if (id) {
-      const article = await prisma.article.findUnique({
-        where: { id },
-        include: { author: { select: { name: true, email: true } } },
-      })
+      const article = await prisma.article.findUnique({ where: { id } })
       if (!article) return NextResponse.json({ error: "Not found" }, { status: 404 })
-      return NextResponse.json({ article })
+      const author = await prisma.user.findUnique({ where: { id: (article as any).authorId }, select: "name, email" })
+      return NextResponse.json({ article: { ...article, author } })
     }
 
     const articles = await prisma.article.findMany({
       orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
-      include: { author: { select: { name: true } } },
     })
+    const enriched = await Promise.all((articles as any[]).map(async (a) => {
+      const author = await prisma.user.findUnique({ where: { id: a.authorId }, select: "name" })
+      return { ...a, author }
+    }))
     return NextResponse.json({ articles })
   } catch (e: any) {
     return NextResponse.json({ error: e.message || "Internal error" }, { status: 500 })

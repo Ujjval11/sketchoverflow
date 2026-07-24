@@ -12,18 +12,22 @@ async function checkAdmin() {
 }
 
 export async function GET() {
-  const admin = await checkAdmin()
-  if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  try {
+    const admin = await checkAdmin()
+    if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
 
-  const [totalUsers, todaySessions, totalImages, totalSessions] = await Promise.all([
-    prisma.user.count(),
-    prisma.practiceSession.count({ where: { completedAt: { gte: today } } }),
-    prisma.referenceImage.count(),
-    prisma.practiceSession.count(),
-  ])
+    const [totalUsers, todaySessions, totalImages, totalSessions] = await Promise.all([
+      prisma.user.count(),
+      prisma.practiceSession.count({ where: { completedAt: { gte: today } } }),
+      prisma.referenceImage.count(),
+      prisma.practiceSession.count(),
+    ])
 
-  return NextResponse.json({ totalUsers, todaySessions, totalImages, totalSessions })
+    return NextResponse.json({ totalUsers, todaySessions, totalImages, totalSessions })
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message || "Internal error" }, { status: 500 })
+  }
 }

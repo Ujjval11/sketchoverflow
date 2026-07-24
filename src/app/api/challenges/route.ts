@@ -6,17 +6,26 @@ export async function GET() {
     const challenges = await prisma.challenge.findMany({
       where: { isActive: true },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
-      include: {
-        _count: { select: { participants: true } },
-        participants: {
-          include: { user: { select: { name: true, avatarUrl: true } } },
-          orderBy: { score: "desc" },
-          take: 10,
-        },
-      },
     })
-    return NextResponse.json({ challenges })
-  } catch {
-    return NextResponse.json({ error: "Failed" }, { status: 500 })
+    const enriched = await Promise.all((challenges as any[]).map(async (c) => {
+      const participantCount = await prisma.challengeParticipant.count({ where: { challengeId: c.id } })
+      const topParticipants = await prisma.challengeParticipant.findMany({
+        where: { challengeId: c.id },
+        orderBy: { score: "desc" },
+        take: 10,
+      })
+      const participantsWithUser = await Promise.all((topParticipants as any[]).map(async (p) => {
+        const user = await prisma.user.findUnique({ where: { id: p.userId }, select: "name, avatarUrl" })
+        return { ...p, user }
+      }))
+      return {
+        ...c,
+        _count: { participants: participantCount },
+        participants: participantsWithUser,
+      }
+    }))
+    return NextResponse.json({ challenges: enriched })
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message || "Failed" }, { status: 500 })
   }
 }

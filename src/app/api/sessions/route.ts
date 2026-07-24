@@ -12,10 +12,17 @@ export async function GET() {
       where: { userId: user.id },
       orderBy: { completedAt: "desc" },
       take: 50,
-      include: { reference: { include: { category: true } } },
     })
-    return NextResponse.json({ sessions })
-  } catch {
-    return NextResponse.json({ error: "Failed" }, { status: 500 })
+    const enriched = await Promise.all(sessions.map(async (s: any) => {
+      let category = null
+      if (s.referenceId) {
+        const ref = await prisma.referenceImage.findUnique({ where: { id: s.referenceId }, select: "categoryId" })
+        if (ref) category = await prisma.category.findUnique({ where: { id: ref.categoryId } })
+      }
+      return { ...s, reference: s.referenceId ? { category } : null }
+    }))
+    return NextResponse.json({ sessions: enriched })
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message || "Failed" }, { status: 500 })
   }
 }
