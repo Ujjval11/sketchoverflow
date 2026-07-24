@@ -197,7 +197,10 @@ function PracticeContent() {
       <div className="mx-auto max-w-4xl px-4 py-8">
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm text-muted-foreground">{currentIndex + 1} / {images.length}</p>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => { setStep("category"); setSelectedCat(null); setSelectedDifficulty("BEGINNER") }}>
+              Exit
+            </Button>
             <div className="text-2xl font-mono font-bold tabular-nums">{timeLeft}s</div>
             <Button variant="outline" size="sm" onClick={() => setIsPaused(!isPaused)}>
               {isPaused ? "Resume" : "Pause"}
