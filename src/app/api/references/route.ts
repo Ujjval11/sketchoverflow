@@ -1,18 +1,40 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma/db"
+import { supabaseAdmin } from "@/lib/supabase/admin"
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
-  const filters: Record<string, unknown> = { isPublished: true }
-  const category = searchParams.get("category")
-  if (category) filters.category = { slug: category }
+  const categorySlug = searchParams.get("category")
   const duration = searchParams.get("duration")
-  if (duration) filters.duration = Number(duration)
+  const difficulty = searchParams.get("difficulty")
 
   const limit = Math.min(Number(searchParams.get("limit")) || 20, 100)
   const offset = Number(searchParams.get("offset")) || 0
 
   try {
+    const filters: Record<string, unknown> = { isPublished: true }
+
+    if (duration) {
+      filters.duration = Number(duration)
+    }
+
+    if (difficulty) {
+      filters.difficulty = difficulty
+    }
+
+    if (categorySlug) {
+      const { data: cat } = await supabaseAdmin
+        .from("Category")
+        .select("id")
+        .eq("slug", categorySlug)
+        .maybeSingle()
+      if (cat) {
+        filters.categoryId = cat.id
+      } else {
+        return NextResponse.json({ images: [], total: 0, limit, offset })
+      }
+    }
+
     const [images, total] = await Promise.all([
       prisma.referenceImage.findMany({
         where: filters,

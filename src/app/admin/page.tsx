@@ -114,16 +114,23 @@ export default function AdminPage() {
     const file = sectionFiles[key]
     if (!file) return
     setSectionUploading(key)
-    const form = new FormData()
-    form.set("file", file)
-    form.set("categoryId", categoryId)
-    form.set("isPublished", "true")
-    form.set("duration", String(duration))
-    form.set("difficulty", difficulty)
-    await fetch("/api/admin/images", { method: "POST", body: form })
-    setSectionUploading(null)
-    setSectionFiles((prev) => ({ ...prev, [key]: null }))
-    loadCategories()
+    try {
+      const form = new FormData()
+      form.set("file", file)
+      form.set("categoryId", categoryId)
+      form.set("isPublished", "true")
+      form.set("duration", String(duration))
+      form.set("difficulty", difficulty)
+      const r = await fetch("/api/admin/images", { method: "POST", body: form })
+      const d = await r.json()
+      if (!r.ok) { setApiError(d.error || "Upload failed"); return }
+      setSectionFiles((prev) => ({ ...prev, [key]: null }))
+      loadCategories()
+    } catch (e: any) {
+      setApiError(e.message || "Upload failed")
+    } finally {
+      setSectionUploading(null)
+    }
   }
 
   async function togglePublish(image: any) {

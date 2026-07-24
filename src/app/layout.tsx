@@ -5,7 +5,7 @@ import { Navbar } from "@/components/layout/navbar"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "SketchOverflow - Practice Every Day. Draw Like a Professional.",
+  title: "SketchOverFlow - Practice Every Day. Draw Like a Professional.",
   description: "Improve your drawing skills with timed references, challenges, and community feedback.",
 }
 

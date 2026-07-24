@@ -49,7 +49,7 @@ export function ArticlesSection() {
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold">Learn from the Pros</h2>
           <p className="text-muted-foreground mt-2 max-w-xl mx-auto">
-            Tips, tutorials and insights to level up your drawing skills — curated by the SketchOverflow team.
+            Tips, tutorials and insights to level up your drawing skills — curated by the SketchOverFlow team.
           </p>
         </motion.div>
 
@@ -89,7 +89,7 @@ export function ArticlesSection() {
                       </p>
                     )}
                     <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2 border-t border-border">
-                      <span>{article.author?.name || "SketchOverflow"}</span>
+                      <span>{article.author?.name || "SketchOverFlow"}</span>
                       <span aria-hidden="true">·</span>
                       <time dateTime={article.createdAt}>
                         {new Date(article.createdAt).toLocaleDateString("en-US", {

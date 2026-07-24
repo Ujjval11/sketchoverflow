@@ -5,13 +5,13 @@ import { ArticlesSection } from "@/components/landing/articles-section"
 import { motion } from "framer-motion"
 
 const testimonials = [
-  { name: "Arya Sharma", role: "Art Student, NID", quote: "SketchOverflow transformed my daily practice. The timed references pushed me to draw faster and more confidently." },
+  { name: "Arya Sharma", role: "Art Student, NID", quote: "SketchOverFlow transformed my daily practice. The timed references pushed me to draw faster and more confidently." },
   { name: "Rahul Verma", role: "Freelance Illustrator", quote: "The variety of categories and timed sessions helped me improve my gesture drawing significantly in just weeks." },
   { name: "Priya Patel", role: "Design Intern", quote: "I love the challenges and community aspect. Getting feedback from other artists keeps me motivated." },
 ]
 
 const faqs = [
-  { q: "Is SketchOverflow free?", a: "Yes! SketchOverflow is completely free to use with unlimited practice sessions." },
+  { q: "Is SketchOverFlow free?", a: "Yes! SketchOverFlow is completely free to use with unlimited practice sessions." },
   { q: "How does the timed practice work?", a: "Choose a category and time duration. Images are shown one at a time with an auto-advancing timer. You can sketch along or just observe." },
   { q: "Can I upload my own reference images?", a: "Reference images are curated and provided by our team to ensure quality across all categories." },
   { q: "How is XP calculated?", a: "You earn XP for completing sessions, maintaining streaks, and rating your practice. Leveling up unlocks new features." },

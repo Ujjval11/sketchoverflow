@@ -25,7 +25,7 @@ function LoginForm() {
     <Card className="w-full max-w-md">
       <CardHeader className="text-center">
         <CardTitle>Sign In</CardTitle>
-        <p className="text-sm text-muted-foreground mt-1">Welcome back to SketchOverflow</p>
+        <p className="text-sm text-muted-foreground mt-1">Welcome back to SketchOverFlow</p>
       </CardHeader>
       <CardContent className="space-y-4">
         {error && <p className="text-sm text-error bg-error/5 rounded-lg p-3">{error}</p>}

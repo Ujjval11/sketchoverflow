@@ -8,20 +8,18 @@ function model(tableName: string) {
   return supabaseAdmin.from(tableName as any)
 }
 
-function buildWhere(query: any, where: any, prefix = "") {
+function buildWhere(query: any, where: any) {
   for (const [key, value] of Object.entries(where)) {
     if (value === null || value === undefined) continue
-    const field = prefix ? `${prefix}.${key}` : key
     if (typeof value === "object" && !Array.isArray(value)) {
-      if ("in" in value) query = query.in(field, value.in)
-      else if ("gte" in value) query = query.gte(field, value.gte)
-      else if ("lte" in value) query = query.lte(field, value.lte)
-      else if ("gt" in value) query = query.gt(field, value.gt)
-      else if ("lt" in value) query = query.lt(field, value.lt)
-      else if ("not" in value && value.not !== null) query = query.neq(field, value.not)
-      else query = buildWhere(query, value, field)
+      if ("in" in value) query = query.in(key, value.in)
+      else if ("gte" in value) query = query.gte(key, value.gte)
+      else if ("lte" in value) query = query.lte(key, value.lte)
+      else if ("gt" in value) query = query.gt(key, value.gt)
+      else if ("lt" in value) query = query.lt(key, value.lt)
+      else if ("not" in value && value.not !== null) query = query.neq(key, value.not)
     } else {
-      query = query.eq(field, value)
+      query = query.eq(key, value)
     }
   }
   return query
@@ -39,6 +37,10 @@ function prismaSelectToStr(sel: any): string {
     }
   }
   return parts.join(",")
+}
+
+function genId(): string {
+  return crypto.randomUUID()
 }
 
 function createModel(name: string) {
@@ -79,10 +81,12 @@ function createModel(name: string) {
     },
 
     create: async (opts: { data: any; select?: any }): Promise<any> => {
-      const q = model(name).insert(opts.data).select(prismaSelectToStr(opts.select))
-      const { data, error } = await q.single()
+      const data = { ...opts.data }
+      if (!data.id) data.id = genId()
+      const q = model(name).insert(data).select(prismaSelectToStr(opts.select))
+      const { data: result, error } = await q.single()
       handleError(error)
-      return data || null
+      return result || null
     },
 
     update: async (opts: { where: any; data: any }): Promise<any> => {
@@ -151,7 +155,9 @@ function createModel(name: string) {
         handleError(error)
         return data || null
       } else {
-        const q = model(name).insert(opts.create).select("*")
+        const createData = { ...opts.create }
+        if (!createData.id) createData.id = genId()
+        const q = model(name).insert(createData).select("*")
         const { data, error } = await q.single()
         handleError(error)
         return data || null
@@ -159,7 +165,8 @@ function createModel(name: string) {
     },
 
     createMany: async (opts: { data: any[] }): Promise<void> => {
-      const { error } = await model(name).insert(opts.data)
+      const rows = opts.data.map((d: any) => ({ ...d, id: d.id || genId() }))
+      const { error } = await model(name).insert(rows)
       handleError(error)
     },
   }

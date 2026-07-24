@@ -35,10 +35,10 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const admin = await checkAdmin()
-  if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-
   try {
+    const admin = await checkAdmin()
+    if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+
     const formData = await request.formData()
     const file = formData.get("file") as File
     const categoryId = formData.get("categoryId") as string

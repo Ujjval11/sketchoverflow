@@ -1,4 +1,4 @@
-export const SITE_NAME = "SketchOverflow"
+export const SITE_NAME = "SketchOverFlow"
 export const SITE_DESCRIPTION = "Practice Every Day. Draw Like a Professional."
 export const SITE_URL = "https://sketchoverflow.app"
 
