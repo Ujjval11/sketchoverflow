@@ -78,9 +78,12 @@ export async function PATCH(request: Request) {
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
   try {
-    const { id, isPublished } = await request.json()
+    const { id, isPublished, duration } = await request.json()
     if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 })
-    const image = await prisma.referenceImage.update({ where: { id }, data: { isPublished } })
+    const data: Record<string, any> = {}
+    if (isPublished !== undefined) data.isPublished = isPublished
+    if (duration !== undefined) data.duration = duration
+    const image = await prisma.referenceImage.update({ where: { id }, data })
     return NextResponse.json({ image })
   } catch (e: any) {
     return NextResponse.json({ error: e.message || "Failed" }, { status: 500 })

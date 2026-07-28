@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useEffect, useState } from "react"
-import { TIMER_OPTIONS, DIFFICULTY_OPTIONS, CHALLENGE_THEMES, CHALLENGE_TYPES } from "@/lib/utils/constants"
+import { DIFFICULTY_OPTIONS, CHALLENGE_THEMES, CHALLENGE_TYPES } from "@/lib/utils/constants"
 
-const DURATIONS = TIMER_OPTIONS.filter((d) => [30, 60, 120, 300].includes(d.value))
+
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState("categories")
@@ -16,7 +16,6 @@ export default function AdminPage() {
   const [challenges, setChallenges] = useState<any[]>([])
   const [catForm, setCatForm] = useState({ name: "", description: "", sortOrder: 0, id: "" })
   const [showCatForm, setShowCatForm] = useState(false)
-  const [sectionOpen, setSectionOpen] = useState<Record<string, boolean>>({})
   const [sectionFiles, setSectionFiles] = useState<Record<string, FileList | null>>({})
   const [sectionUploading, setSectionUploading] = useState<string | null>(null)
 
@@ -58,17 +57,7 @@ export default function AdminPage() {
           const ir = await fetch(`/api/admin/images?categoryId=${cat.id}`)
           const id = await ir.json()
           if (id.error) { setApiError(id.error); return cat }
-          const allImages = id.images || []
-          const sectionImages: Record<string, Record<number, any[]>> = {}
-          for (const diff of DIFFICULTY_OPTIONS) {
-            sectionImages[diff.value] = {}
-            for (const dur of DURATIONS) {
-              sectionImages[diff.value][dur.value] = allImages.filter(
-                (img: any) => img.difficulty === diff.value && img.duration === dur.value
-              )
-            }
-          }
-          return { ...cat, images: allImages, sectionImages }
+          return { ...cat, images: id.images || [] }
         })
       )
       setCategories(withImages)
@@ -113,8 +102,8 @@ export default function AdminPage() {
     loadCategories()
   }
 
-  async function uploadToSection(categoryId: string, difficulty: string, duration: number) {
-    const key = `${categoryId}-${difficulty}-${duration}`
+  async function uploadToSection(categoryId: string, difficulty: string) {
+    const key = `${categoryId}-${difficulty}`
     const files = sectionFiles[key]
     if (!files || files.length === 0) return
     setSectionUploading(key)
@@ -124,8 +113,7 @@ export default function AdminPage() {
         const form = new FormData()
         form.set("file", files[i])
         form.set("categoryId", categoryId)
-        form.set("isPublished", "true")
-        form.set("duration", String(duration))
+        form.set("isPublished", "false")
         form.set("difficulty", difficulty)
         const r = await fetch("/api/admin/images", { method: "POST", body: form })
         const d = await r.json()
@@ -141,11 +129,20 @@ export default function AdminPage() {
     setSectionUploading(null)
   }
 
-  async function togglePublish(image: any) {
+  async function setImageTimer(imageId: string, duration: number) {
     await fetch("/api/admin/images", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: image.id, isPublished: !image.isPublished }),
+      body: JSON.stringify({ id: imageId, duration, isPublished: true }),
+    })
+    loadCategories()
+  }
+
+  async function disableImage(imageId: string) {
+    await fetch("/api/admin/images", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: imageId, isPublished: false }),
     })
     loadCategories()
   }
@@ -158,12 +155,6 @@ export default function AdminPage() {
       alert(d.error || "Failed to delete image")
     }
     loadCategories()
-  }
-
-  function formatDuration(seconds: number | null) {
-    if (!seconds) return null
-    const opt = TIMER_OPTIONS.find((d) => d.value === seconds)
-    return opt?.label || `${seconds}s`
   }
 
   async function saveChallenge(e: React.FormEvent) {
@@ -394,75 +385,55 @@ export default function AdminPage() {
               </CardHeader>
 
               <CardContent className="space-y-6">
-                {DIFFICULTY_OPTIONS.map((diff) => (
-                  <div key={diff.value} className="space-y-2">
-                    <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{diff.label}</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {DURATIONS.map((dur) => {
-                        const sectionImgs = cat.sectionImages?.[diff.value]?.[dur.value] || []
-                        const key = `${cat.id}-${diff.value}-${dur.value}`
-                        const isUploading = sectionUploading === key
-                        const hasFile = !!sectionFiles[key]
-                        const isOpen = sectionOpen[key]
-                        return (
-                          <div key={dur.value} className="rounded-lg border border-border overflow-hidden">
-                            <div className="flex items-center justify-between px-3 py-1.5 bg-muted/20 border-b border-border">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-sm font-medium">{dur.label}</span>
-                                <span className="text-xs text-muted-foreground">({sectionImgs.length})</span>
-                              </div>
-                              <button onClick={() => { setSectionOpen((prev) => ({ ...prev, [key]: !prev[key] })); setSectionFiles((prev) => ({ ...prev, [key]: null })) }}
-                                className="text-xs px-1.5 py-0.5 rounded bg-primary text-white hover:bg-primary/90"
-                              >
-                                {isOpen ? "✕" : "+"}
-                              </button>
-                            </div>
-                            {sectionImgs.length > 0 && (
-                              <div className="p-2">
-                                <div className="grid grid-cols-3 gap-1.5">
-                                  {sectionImgs.map((img: any) => (
-                                    <ImageThumb key={img.id} img={img} formatDuration={formatDuration} togglePublish={togglePublish} deleteImage={deleteImage} />
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            {isOpen && (
-                              <div className="px-2 pb-2">
-                                <div className="flex items-end gap-2 p-2 rounded-lg bg-muted/30">
-                                  <div className="space-y-1 flex-1 min-w-0">
-                                    <Label className="text-[10px]">Files</Label>
-                                    <Input type="file" accept="image/*" multiple className="text-xs h-8" onChange={(e) => setSectionFiles((prev) => ({ ...prev, [key]: e.target.files || null }))} />
-                                  </div>
-                                  <Button size="sm" onClick={() => uploadToSection(cat.id, diff.value, dur.value)} disabled={!hasFile || isUploading}>
-                                    {isUploading ? "..." : "Upload"}
-                                  </Button>
-                                </div>
-                              </div>
-                            )}
+                {DIFFICULTY_OPTIONS.map((diff) => {
+                  const diffImages = (cat.images || []).filter((img: any) => img.difficulty === diff.value)
+                  const key = `${cat.id}-${diff.value}`
+                  const isUploading = sectionUploading === key
+                  const hasFile = !!sectionFiles[key]
+                  return (
+                    <div key={diff.value} className="rounded-lg border border-border overflow-hidden">
+                      <div className="flex items-center justify-between px-4 py-2 bg-muted/20 border-b border-border">
+                        <h4 className="text-sm font-semibold uppercase tracking-wider">
+                          {diff.label} <span className="text-xs text-muted-foreground font-normal">({diffImages.length} images)</span>
+                        </h4>
+                      </div>
+                      <div className="p-3 space-y-3">
+                        <div className="flex items-end gap-3 rounded-lg bg-muted/30 p-3">
+                          <div className="space-y-1 flex-1 min-w-0">
+                            <Label className="text-[10px]">Upload Images</Label>
+                            <Input type="file" accept="image/*" multiple className="text-xs h-8" onChange={(e) => setSectionFiles((prev) => ({ ...prev, [key]: e.target.files || null }))} />
                           </div>
-                        )
-                      })}
+                          <Button size="sm" onClick={() => uploadToSection(cat.id, diff.value)} disabled={!hasFile || isUploading}>
+                            {isUploading ? "..." : "Upload"}
+                          </Button>
+                        </div>
+                        {diffImages.length > 0 ? (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                            {diffImages.map((img: any) => (
+                              <ImageCard key={img.id} img={img} setImageTimer={setImageTimer} disableImage={disableImage} deleteImage={deleteImage} />
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground text-center py-4">No images in this section.</p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
                 {(() => {
                   const other = (cat.images || []).filter((img: any) =>
-                    !img.difficulty || !DIFFICULTY_OPTIONS.some((d) => d.value === img.difficulty) ||
-                    !DURATIONS.some((d) => d.value === img.duration)
+                    !img.difficulty || !DIFFICULTY_OPTIONS.some((d) => d.value === img.difficulty)
                   )
                   if (other.length === 0) return null
                   return (
                     <div className="rounded-lg border border-border overflow-hidden">
                       <div className="flex items-center justify-between px-4 py-2 bg-muted/20 border-b border-border">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">Other</span>
-                          <span className="text-xs text-muted-foreground">({other.length} images)</span>
-                        </div>
+                        <h4 className="text-sm font-medium">Other <span className="text-xs text-muted-foreground">({other.length} images)</span></h4>
                       </div>
                       <div className="p-3">
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                           {other.map((img: any) => (
-                            <ImageThumb key={img.id} img={img} formatDuration={formatDuration} togglePublish={togglePublish} deleteImage={deleteImage} />
+                            <ImageCard key={img.id} img={img} setImageTimer={setImageTimer} disableImage={disableImage} deleteImage={deleteImage} />
                           ))}
                         </div>
                       </div>
@@ -741,27 +712,45 @@ export default function AdminPage() {
   )
 }
 
-function ImageThumb({ img, formatDuration, togglePublish, deleteImage }: {
-  img: any; formatDuration: (s: number | null) => string | null; togglePublish: (img: any) => void; deleteImage: (id: string) => void
+function ImageCard({ img, setImageTimer, disableImage, deleteImage }: {
+  img: any; setImageTimer: (id: string, duration: number) => void; disableImage: (id: string) => void; deleteImage: (id: string) => void
 }) {
+  const TIMER_BUTTONS = [30, 60, 120, 300] as const
   return (
     <div className="group relative rounded-lg overflow-hidden border border-border bg-muted/30">
       <div className="aspect-[3/4] bg-muted flex items-center justify-center overflow-hidden">
         <img src={img.url} alt="" className="w-full h-full object-cover" />
       </div>
-      <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button onClick={() => togglePublish(img)}
-          className={`text-xs px-1.5 py-0.5 rounded ${img.isPublished ? "bg-success/80 text-white" : "bg-muted/80 text-muted-foreground"}`}>
-          {img.isPublished ? "Pub" : "Draft"}
+      <div className="absolute inset-x-0 bottom-0 flex flex-wrap gap-0.5 p-1 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+        {TIMER_BUTTONS.map((t) => (
+          <button key={t} onClick={() => setImageTimer(img.id, t)}
+            className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+              img.isPublished && img.duration === t
+                ? "bg-primary text-white"
+                : "bg-white/80 text-black hover:bg-white"
+            }`}
+          >
+            {t === 30 ? "30s" : t === 60 ? "1m" : t === 120 ? "2m" : "5m"}
+          </button>
+        ))}
+        <button onClick={() => disableImage(img.id)}
+          className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-muted/80 text-white hover:bg-muted"
+        >
+          Disable
         </button>
         <button onClick={() => deleteImage(img.id)}
-          className="text-xs px-1.5 py-0.5 rounded bg-error/80 text-white">✕</button>
+          className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-error/80 text-white hover:bg-error"
+        >
+          ✕
+        </button>
       </div>
-      <div className="absolute bottom-1 left-1">
-        <span className={`text-[10px] px-1 py-0.5 rounded ${img.isPublished ? "bg-success/80 text-white" : "bg-muted/80 text-muted-foreground"}`}>
-          {img.isPublished ? "Published" : "Draft"}
-        </span>
-      </div>
+      {img.isPublished && img.duration && (
+        <div className="absolute top-1 left-1">
+          <span className="text-[10px] px-1 py-0.5 rounded bg-primary/80 text-white font-medium">
+            {img.duration === 30 ? "30s" : img.duration === 60 ? "1m" : img.duration === 120 ? "2m" : img.duration === 300 ? "5m" : `${img.duration}s`}
+          </span>
+        </div>
+      )}
     </div>
   )
 }

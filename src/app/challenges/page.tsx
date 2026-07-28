@@ -73,8 +73,8 @@ export default function ChallengesPage() {
                           <span className="text-xs text-muted-foreground capitalize">{c.type} challenge</span>
                         </div>
                         <span className={`text-xs px-2 py-1 rounded-full whitespace-nowrap ${
-                          DIFFICULTY_OPTIONS.find(d => d.value === c.difficulty)?.label === "Easy" ? "bg-success/10 text-success" :
-                          DIFFICULTY_OPTIONS.find(d => d.value === c.difficulty)?.label === "Moderate" ? "bg-yellow-500/10 text-yellow-500" :
+                          DIFFICULTY_OPTIONS.find(d => d.value === c.difficulty)?.label === "Beginner" ? "bg-success/10 text-success" :
+                          DIFFICULTY_OPTIONS.find(d => d.value === c.difficulty)?.label === "Upper" ? "bg-yellow-500/10 text-yellow-500" :
                           c.difficulty ? "bg-error/10 text-error" : "bg-muted text-muted-foreground"
                         }`}>
                           {DIFFICULTY_OPTIONS.find(d => d.value === c.difficulty)?.label || "Any Level"}
