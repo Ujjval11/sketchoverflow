@@ -8,9 +8,6 @@ export async function GET(request: Request) {
   const duration = searchParams.get("duration")
   const difficulty = searchParams.get("difficulty")
 
-  const limit = Math.min(Number(searchParams.get("limit")) || 20, 100)
-  const offset = Number(searchParams.get("offset")) || 0
-
   try {
     const filters: Record<string, unknown> = { isPublished: true }
 
@@ -31,7 +28,7 @@ export async function GET(request: Request) {
       if (cat) {
         filters.categoryId = cat.id
       } else {
-        return NextResponse.json({ images: [], total: 0, limit, offset })
+        return NextResponse.json({ images: [], total: 0 })
       }
     }
 
@@ -39,8 +36,8 @@ export async function GET(request: Request) {
       prisma.referenceImage.findMany({ where: filters }),
       prisma.referenceImage.count({ where: filters }),
     ])
-    const images = allImages.sort(() => Math.random() - 0.5).slice(0, limit)
-    return NextResponse.json({ images, total, limit, offset })
+    const images = allImages.sort(() => Math.random() - 0.5)
+    return NextResponse.json({ images, total })
   } catch (e: any) {
     return NextResponse.json({ error: e.message || "Failed to fetch references" }, { status: 500 })
   }
