@@ -19,11 +19,17 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const categoryId = searchParams.get("categoryId")
     const where = categoryId ? { categoryId } : {}
-    const [images, category] = await Promise.all([
-      prisma.referenceImage.findMany({ where, orderBy: { uploadedAt: "desc" }, take: 3000 }),
-      categoryId ? prisma.category.findUnique({ where: { id: categoryId } }) : Promise.resolve(null),
-    ])
-    const enriched = (images as any[]).map((img) => ({ ...img, category }))
+    const BATCH = 1000
+    const allImages: any[] = []
+    let page = 0
+    let batch: any[]
+    do {
+      batch = await prisma.referenceImage.findMany({ where, orderBy: { uploadedAt: "desc" }, skip: page * BATCH, take: BATCH })
+      allImages.push(...batch)
+      page++
+    } while (batch.length === BATCH)
+    const category = categoryId ? await prisma.category.findUnique({ where: { id: categoryId } }) : null
+    const enriched = (allImages as any[]).map((img) => ({ ...img, category }))
     return NextResponse.json({ images: enriched })
   } catch (e: any) {
     return NextResponse.json({ error: e.message || "Internal error" }, { status: 500 })
