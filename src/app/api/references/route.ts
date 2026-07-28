@@ -33,7 +33,7 @@ export async function GET(request: Request) {
     }
 
     const [allImages, total] = await Promise.all([
-      prisma.referenceImage.findMany({ where: filters }),
+      prisma.referenceImage.findMany({ where: filters, take: 1000 }),
       prisma.referenceImage.count({ where: filters }),
     ])
     const images = allImages.sort(() => Math.random() - 0.5)
