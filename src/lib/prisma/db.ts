@@ -1,5 +1,17 @@
 import { supabaseAdmin } from "@/lib/supabase/admin"
 
+async function retry<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn()
+    } catch (e: any) {
+      if (i === retries - 1) throw e
+      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i)))
+    }
+  }
+  throw new Error("retry exhausted")
+}
+
 function handleError(error: any) {
   if (error) throw new Error(error.message || "Database error")
 }
@@ -45,7 +57,7 @@ function genId(): string {
 
 function createModel(name: string) {
   return {
-    findMany: async (opts: any = {}): Promise<any[]> => {
+    findMany: async (opts: any = {}): Promise<any[]> => retry(async () => {
       let query = model(name).select(prismaSelectToStr(opts.select))
       if (opts.where) query = buildWhere(query, opts.where)
       if (opts.orderBy) {
@@ -59,17 +71,17 @@ function createModel(name: string) {
       const { data, error } = await query
       handleError(error)
       return (data || []) as any[]
-    },
+    }),
 
-    findUnique: async (opts: { where: any; include?: any; select?: any }): Promise<any> => {
+    findUnique: async (opts: { where: any; include?: any; select?: any }): Promise<any> => retry(async () => {
       let query = model(name).select(prismaSelectToStr(opts.select))
       query = buildWhere(query, opts.where)
       const { data, error } = await query.maybeSingle()
       handleError(error)
       return data || null
-    },
+    }),
 
-    findFirst: async (opts: { where?: any; orderBy?: any }): Promise<any> => {
+    findFirst: async (opts: { where?: any; orderBy?: any }): Promise<any> => retry(async () => {
       let query = model(name).select("*")
       if (opts.where) query = buildWhere(query, opts.where)
       if (opts.orderBy)
@@ -78,18 +90,18 @@ function createModel(name: string) {
       const { data, error } = await query.maybeSingle()
       handleError(error)
       return data || null
-    },
+    }),
 
-    create: async (opts: { data: any; select?: any }): Promise<any> => {
+    create: async (opts: { data: any; select?: any }): Promise<any> => retry(async () => {
       const data = { ...opts.data }
       if (!data.id) data.id = genId()
       const q = model(name).insert(data).select(prismaSelectToStr(opts.select))
       const { data: result, error } = await q.single()
       handleError(error)
       return result || null
-    },
+    }),
 
-    update: async (opts: { where: any; data: any }): Promise<any> => {
+    update: async (opts: { where: any; data: any }): Promise<any> => retry(async () => {
       const updateData: Record<string, any> = {}
       for (const [k, v] of Object.entries(opts.data)) {
         const val = v as any
@@ -108,31 +120,31 @@ function createModel(name: string) {
       const { data, error } = await query.single()
       handleError(error)
       return data || null
-    },
+    }),
 
-    delete: async (opts: { where: any }): Promise<void> => {
+    delete: async (opts: { where: any }): Promise<void> => retry(async () => {
       let query = model(name).delete()
       query = buildWhere(query, opts.where)
       const { error } = await query
       handleError(error)
-    },
+    }),
 
-    deleteMany: async (opts: { where: any }): Promise<void> => {
+    deleteMany: async (opts: { where: any }): Promise<void> => retry(async () => {
       let query = model(name).delete()
       query = buildWhere(query, opts.where)
       const { error } = await query
       handleError(error)
-    },
+    }),
 
-    count: async (opts: { where?: any } = {}): Promise<number> => {
+    count: async (opts: { where?: any } = {}): Promise<number> => retry(async () => {
       let query = model(name).select("*", { count: "exact", head: true })
       if (opts.where) query = buildWhere(query, opts.where)
       const { count, error } = await query
       handleError(error)
       return count || 0
-    },
+    }),
 
-    upsert: async (opts: { where: any; create: any; update: any }): Promise<any> => {
+    upsert: async (opts: { where: any; create: any; update: any }): Promise<any> => retry(async () => {
       let query = model(name).select("*")
       for (const val of Object.values(opts.where)) {
         if (typeof val === "object" && val !== null) {
@@ -162,13 +174,13 @@ function createModel(name: string) {
         handleError(error)
         return data || null
       }
-    },
+    }),
 
-    createMany: async (opts: { data: any[] }): Promise<void> => {
+    createMany: async (opts: { data: any[] }): Promise<void> => retry(async () => {
       const rows = opts.data.map((d: any) => ({ ...d, id: d.id || genId() }))
       const { error } = await model(name).insert(rows)
       handleError(error)
-    },
+    }),
   }
 }
 
