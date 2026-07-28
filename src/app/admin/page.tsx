@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useEffect, useState } from "react"
-import { DIFFICULTY_OPTIONS, CHALLENGE_THEMES, CHALLENGE_TYPES } from "@/lib/utils/constants"
+import { TIMER_OPTIONS, DIFFICULTY_OPTIONS, CHALLENGE_THEMES, CHALLENGE_TYPES } from "@/lib/utils/constants"
+
+const DURATIONS = TIMER_OPTIONS.filter((d) => [30, 60, 120, 300].includes(d.value))
 
 
 
