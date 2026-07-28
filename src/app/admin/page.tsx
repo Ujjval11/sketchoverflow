@@ -21,6 +21,7 @@ export default function AdminPage() {
   const [sectionFiles, setSectionFiles] = useState<Record<string, FileList | null>>({})
   const [sectionUploading, setSectionUploading] = useState<string | null>(null)
   const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set())
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
 
   const [challengeForm, setChallengeForm] = useState<any>({
     id: "", title: "", type: "weekly", description: "", difficulty: "", duration: "",
@@ -439,12 +440,14 @@ export default function AdminPage() {
                   const hasFile = !!sectionFiles[key]
                   return (
                     <div key={diff.value} className="rounded-lg border border-border overflow-hidden">
-                      <div className="flex items-center justify-between px-4 py-2 bg-muted/20 border-b border-border">
+                      <button onClick={() => setCollapsedSections(prev => { const n = new Set(prev); const k = key; n.has(k) ? n.delete(k) : n.add(k); return n })}
+                        className="flex items-center justify-between w-full px-4 py-2 bg-muted/20 border-b border-border hover:bg-muted/40 transition-colors text-left">
                         <h4 className="text-sm font-semibold uppercase tracking-wider">
                           {diff.label} <span className="text-xs text-muted-foreground font-normal">({diffGroups.length} images)</span>
                         </h4>
-                      </div>
-                      <div className="p-3 space-y-3">
+                        <svg className={`w-4 h-4 text-muted-foreground transition-transform ${collapsedSections.has(key) ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                      </button>
+                      {!collapsedSections.has(key) && <div className="p-3 space-y-3">
                         <div className="flex items-end gap-3 rounded-lg bg-muted/30 p-3">
                           <div className="space-y-1 flex-1 min-w-0">
                             <Label className="text-[10px]">Upload Images</Label>
@@ -463,7 +466,7 @@ export default function AdminPage() {
                         ) : (
                           <p className="text-xs text-muted-foreground text-center py-4">No images in this section.</p>
                         )}
-                      </div>
+                      </div>}
                     </div>
                   )
                 })}
