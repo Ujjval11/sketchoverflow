@@ -3,8 +3,8 @@ export const SITE_DESCRIPTION = "Practice Every Day. Draw Like a Professional."
 export const SITE_URL = "https://sketchoverflow.app"
 
 export const DIFFICULTY_OPTIONS = [
-  { label: "Beginner", value: "BEGINNER" },
-  { label: "Upper", value: "INTERMEDIATE" },
+  { label: "Starter", value: "BEGINNER" },
+  { label: "Intermediate", value: "INTERMEDIATE" },
   { label: "Pro", value: "ADVANCED" },
 ] as const
 
