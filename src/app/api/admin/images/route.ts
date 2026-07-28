@@ -22,7 +22,6 @@ export async function GET(request: Request) {
     const images = await prisma.referenceImage.findMany({
       where,
       orderBy: { uploadedAt: "desc" },
-      take: 200,
     })
     const enriched = await Promise.all((images as any[]).map(async (img) => {
       const category = await prisma.category.findUnique({ where: { id: img.categoryId } })
