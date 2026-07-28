@@ -20,6 +20,7 @@ export default function AdminPage() {
   const [showCatForm, setShowCatForm] = useState(false)
   const [sectionFiles, setSectionFiles] = useState<Record<string, FileList | null>>({})
   const [sectionUploading, setSectionUploading] = useState<string | null>(null)
+  const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set())
 
   const [challengeForm, setChallengeForm] = useState<any>({
     id: "", title: "", type: "weekly", description: "", difficulty: "", duration: "",
@@ -407,12 +408,20 @@ export default function AdminPage() {
             </Card>
           )}
 
-          {categories.map((cat: any) => (
+          {categories.map((cat: any) => {
+            const isCollapsed = collapsedCats.has(cat.id)
+            return (
             <Card key={cat.id}>
               <CardHeader className="flex flex-row items-center justify-between py-4">
-                <div>
-                  <CardTitle className="text-lg">{cat.name}</CardTitle>
-                  <p className="text-xs text-muted-foreground">{(cat.imageGroups?.length || 0) + (cat.otherGroups?.length || 0)} unique images · {cat.description || "—"}</p>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => setCollapsedCats(prev => { const n = new Set(prev); isCollapsed ? n.delete(cat.id) : n.add(cat.id); return n })}
+                    className="text-muted-foreground hover:text-foreground transition-colors">
+                    <svg className={`w-4 h-4 transition-transform ${isCollapsed ? "" : "rotate-90"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                  </button>
+                  <div>
+                    <CardTitle className="text-lg">{cat.name}</CardTitle>
+                    <p className="text-xs text-muted-foreground">{(cat.imageGroups?.length || 0) + (cat.otherGroups?.length || 0)} unique images · {cat.description || "—"}</p>
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => { setCatForm({ name: cat.name, description: cat.description || "", sortOrder: cat.sortOrder, id: cat.id }); setShowCatForm(true) }}
@@ -422,7 +431,7 @@ export default function AdminPage() {
                 </div>
               </CardHeader>
 
-              <CardContent className="space-y-6">
+              {!isCollapsed && <CardContent className="space-y-6">
                 {DIFFICULTY_OPTIONS.map((diff) => {
                   const diffGroups = (cat.imageGroups || []).filter((g: any) => g.difficulty === diff.value)
                   const key = `${cat.id}-${diff.value}`
@@ -478,9 +487,9 @@ export default function AdminPage() {
                     </div>
                   )
                 })()}
-              </CardContent>
+              </CardContent>}
             </Card>
-          ))}
+          )})}
         </div>
       )}
 
