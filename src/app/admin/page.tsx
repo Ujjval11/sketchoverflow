@@ -59,7 +59,19 @@ export default function AdminPage() {
           const ir = await fetch(`/api/admin/images?categoryId=${cat.id}`)
           const id = await ir.json()
           if (id.error) { setApiError(id.error); return cat }
-          return { ...cat, images: id.images || [] }
+          const allImages = id.images || []
+          const groups: Record<string, any> = {}
+          for (const img of allImages) {
+            const key = `${img.url}|${img.categoryId}`
+            if (!groups[key]) {
+              groups[key] = { key, url: img.url, categoryId: img.categoryId, difficulty: img.difficulty, variants: [], activeDurations: [] }
+            }
+            groups[key].variants.push(img)
+            if (img.isPublished && img.duration && !groups[key].activeDurations.includes(img.duration)) {
+              groups[key].activeDurations.push(img.duration)
+            }
+          }
+          return { ...cat, imageGroups: Object.values(groups) }
         })
       )
       setCategories(withImages)
@@ -131,32 +143,56 @@ export default function AdminPage() {
     setSectionUploading(null)
   }
 
-  async function setImageTimer(imageId: string, duration: number) {
-    await fetch("/api/admin/images", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: imageId, duration, isPublished: true }),
-    })
-    loadCategories()
-  }
-
-  async function disableImage(imageId: string) {
-    await fetch("/api/admin/images", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: imageId, isPublished: false }),
-    })
-    loadCategories()
-  }
-
-  async function deleteImage(id: string) {
-    if (!confirm("Delete this image?")) return
-    const r = await fetch(`/api/admin/images?id=${id}`, { method: "DELETE" })
-    if (!r.ok) {
-      const d = await r.json()
-      alert(d.error || "Failed to delete image")
+  async function toggleDuration(group: any, duration: number) {
+    const existing = group.variants.find((v: any) => v.duration === duration)
+    if (existing) {
+      await fetch(`/api/admin/images?id=${existing.id}`, { method: "DELETE" })
+    } else {
+      const r = await fetch("/api/admin/images", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: group.url,
+          categoryId: group.categoryId,
+          difficulty: group.difficulty,
+          duration,
+          isPublished: true,
+        }),
+      })
+      if (!r.ok) {
+        const d = await r.json()
+        setApiError(d.error || "Failed to publish")
+      }
     }
     loadCategories()
+  }
+
+  async function disableGroup(group: any) {
+    for (const v of group.variants) {
+      if (v.isPublished) {
+        await fetch("/api/admin/images", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: v.id, isPublished: false }),
+        })
+      }
+    }
+    loadCategories()
+  }
+
+  async function deleteGroup(group: any) {
+    if (!confirm("Delete this image and all its variants?")) return
+    let ok = true
+    for (const v of group.variants) {
+      const r = await fetch(`/api/admin/images?id=${v.id}`, { method: "DELETE" })
+      if (!r.ok) {
+        const d = await r.json()
+        alert(d.error || "Failed to delete image")
+        ok = false
+        break
+      }
+    }
+    if (ok) loadCategories()
   }
 
   async function saveChallenge(e: React.FormEvent) {
@@ -376,7 +412,7 @@ export default function AdminPage() {
               <CardHeader className="flex flex-row items-center justify-between py-4">
                 <div>
                   <CardTitle className="text-lg">{cat.name}</CardTitle>
-                  <p className="text-xs text-muted-foreground">{cat.images?.length || 0} images · {cat.description || "—"}</p>
+                  <p className="text-xs text-muted-foreground">{(cat.imageGroups?.length || 0) + (cat.otherGroups?.length || 0)} unique images · {cat.description || "—"}</p>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => { setCatForm({ name: cat.name, description: cat.description || "", sortOrder: cat.sortOrder, id: cat.id }); setShowCatForm(true) }}
@@ -388,7 +424,7 @@ export default function AdminPage() {
 
               <CardContent className="space-y-6">
                 {DIFFICULTY_OPTIONS.map((diff) => {
-                  const diffImages = (cat.images || []).filter((img: any) => img.difficulty === diff.value)
+                  const diffGroups = (cat.imageGroups || []).filter((g: any) => g.difficulty === diff.value)
                   const key = `${cat.id}-${diff.value}`
                   const isUploading = sectionUploading === key
                   const hasFile = !!sectionFiles[key]
@@ -396,7 +432,7 @@ export default function AdminPage() {
                     <div key={diff.value} className="rounded-lg border border-border overflow-hidden">
                       <div className="flex items-center justify-between px-4 py-2 bg-muted/20 border-b border-border">
                         <h4 className="text-sm font-semibold uppercase tracking-wider">
-                          {diff.label} <span className="text-xs text-muted-foreground font-normal">({diffImages.length} images)</span>
+                          {diff.label} <span className="text-xs text-muted-foreground font-normal">({diffGroups.length} images)</span>
                         </h4>
                       </div>
                       <div className="p-3 space-y-3">
@@ -409,10 +445,10 @@ export default function AdminPage() {
                             {isUploading ? "..." : "Upload"}
                           </Button>
                         </div>
-                        {diffImages.length > 0 ? (
+                        {diffGroups.length > 0 ? (
                           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                            {diffImages.map((img: any) => (
-                              <ImageCard key={img.id} img={img} setImageTimer={setImageTimer} disableImage={disableImage} deleteImage={deleteImage} />
+                            {diffGroups.map((group: any) => (
+                              <ImageCard key={group.key} group={group} onToggleDuration={toggleDuration} onDisable={disableGroup} onDelete={deleteGroup} />
                             ))}
                           </div>
                         ) : (
@@ -423,8 +459,8 @@ export default function AdminPage() {
                   )
                 })}
                 {(() => {
-                  const other = (cat.images || []).filter((img: any) =>
-                    !img.difficulty || !DIFFICULTY_OPTIONS.some((d) => d.value === img.difficulty)
+                  const other = (cat.imageGroups || []).filter((g: any) =>
+                    !g.difficulty || !DIFFICULTY_OPTIONS.some((d) => d.value === g.difficulty)
                   )
                   if (other.length === 0) return null
                   return (
@@ -434,8 +470,8 @@ export default function AdminPage() {
                       </div>
                       <div className="p-3">
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                          {other.map((img: any) => (
-                            <ImageCard key={img.id} img={img} setImageTimer={setImageTimer} disableImage={disableImage} deleteImage={deleteImage} />
+                          {other.map((group: any) => (
+                            <ImageCard key={group.key} group={group} onToggleDuration={toggleDuration} onDisable={disableGroup} onDelete={deleteGroup} />
                           ))}
                         </div>
                       </div>
@@ -714,43 +750,47 @@ export default function AdminPage() {
   )
 }
 
-function ImageCard({ img, setImageTimer, disableImage, deleteImage }: {
-  img: any; setImageTimer: (id: string, duration: number) => void; disableImage: (id: string) => void; deleteImage: (id: string) => void
+function ImageCard({ group, onToggleDuration, onDisable, onDelete }: {
+  group: any; onToggleDuration: (group: any, duration: number) => void; onDisable: (group: any) => void; onDelete: (group: any) => void
 }) {
   const TIMER_BUTTONS = [30, 60, 120, 300] as const
+  const activeDurations: number[] = group.activeDurations || []
   return (
     <div className="group relative rounded-lg overflow-hidden border border-border bg-muted/30">
       <div className="aspect-[3/4] bg-muted flex items-center justify-center overflow-hidden">
-        <img src={img.url} alt="" className="w-full h-full object-cover" />
+        <img src={group.url} alt="" className="w-full h-full object-cover" />
       </div>
       <div className="absolute inset-x-0 bottom-0 flex flex-wrap gap-0.5 p-1 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-        {TIMER_BUTTONS.map((t) => (
-          <button key={t} onClick={() => setImageTimer(img.id, t)}
-            className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-              img.isPublished && img.duration === t
-                ? "bg-primary text-white"
-                : "bg-white/80 text-black hover:bg-white"
-            }`}
-          >
-            {t === 30 ? "30s" : t === 60 ? "1m" : t === 120 ? "2m" : "5m"}
-          </button>
-        ))}
-        <button onClick={() => disableImage(img.id)}
+        {TIMER_BUTTONS.map((t) => {
+          const isActive = activeDurations.includes(t)
+          return (
+            <button key={t} onClick={() => onToggleDuration(group, t)}
+              className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                isActive ? "bg-primary text-white" : "bg-white/80 text-black hover:bg-white"
+              }`}
+            >
+              {t === 30 ? "30s" : t === 60 ? "1m" : t === 120 ? "2m" : "5m"}
+            </button>
+          )
+        })}
+        <button onClick={() => onDisable(group)}
           className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-muted/80 text-white hover:bg-muted"
         >
           Disable
         </button>
-        <button onClick={() => deleteImage(img.id)}
+        <button onClick={() => onDelete(group)}
           className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-error/80 text-white hover:bg-error"
         >
           ✕
         </button>
       </div>
-      {img.isPublished && img.duration && (
-        <div className="absolute top-1 left-1">
-          <span className="text-[10px] px-1 py-0.5 rounded bg-primary/80 text-white font-medium">
-            {img.duration === 30 ? "30s" : img.duration === 60 ? "1m" : img.duration === 120 ? "2m" : img.duration === 300 ? "5m" : `${img.duration}s`}
-          </span>
+      {activeDurations.length > 0 && (
+        <div className="absolute top-1 left-1 flex gap-1 flex-wrap">
+          {activeDurations.map((d: number) => (
+            <span key={d} className="text-[10px] px-1 py-0.5 rounded bg-primary/80 text-white font-medium">
+              {d === 30 ? "30s" : d === 60 ? "1m" : d === 120 ? "2m" : d === 300 ? "5m" : `${d}s`}
+            </span>
+          ))}
         </div>
       )}
     </div>

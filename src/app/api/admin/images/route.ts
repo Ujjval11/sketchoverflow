@@ -39,34 +39,48 @@ export async function POST(request: Request) {
     const admin = await checkAdmin()
     if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-    const formData = await request.formData()
-    const file = formData.get("file") as File
-    const categoryId = formData.get("categoryId") as string
-    const isPublished = formData.get("isPublished") === "true"
-    const duration = formData.get("duration") ? Number(formData.get("duration")) : null
-    const difficulty = formData.get("difficulty") as string | null
+    const contentType = request.headers.get("content-type") || ""
 
-    if (!file || !categoryId) return NextResponse.json({ error: "File and category required" }, { status: 400 })
+    if (contentType.includes("multipart/form-data")) {
+      const formData = await request.formData()
+      const file = formData.get("file") as File
+      const categoryId = formData.get("categoryId") as string
+      const isPublished = formData.get("isPublished") === "true"
+      const duration = formData.get("duration") ? Number(formData.get("duration")) : null
+      const difficulty = formData.get("difficulty") as string | null
 
-    const { data: bucket } = await supabaseAdmin.storage.getBucket("references")
-    if (!bucket) {
-      await supabaseAdmin.storage.createBucket("references", { public: true, fileSizeLimit: 10485760 })
+      if (!file || !categoryId) return NextResponse.json({ error: "File and category required" }, { status: 400 })
+
+      const { data: bucket } = await supabaseAdmin.storage.getBucket("references")
+      if (!bucket) {
+        await supabaseAdmin.storage.createBucket("references", { public: true, fileSizeLimit: 10485760 })
+      }
+
+      const ext = file.name.split(".").pop() || "png"
+      const fileName = `references/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+      const bytes = await file.arrayBuffer()
+      const { error: uploadError } = await supabaseAdmin.storage.from("references").upload(fileName, bytes, { contentType: file.type })
+      if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 })
+
+      const { data: urlData } = supabaseAdmin.storage.from("references").getPublicUrl(fileName)
+      const url = urlData.publicUrl
+
+      const image = await prisma.referenceImage.create({
+        data: { url, categoryId, isPublished, duration, difficulty },
+      })
+      await prisma.category.update({ where: { id: categoryId }, data: { imageCount: { increment: 1 } } })
+
+      return NextResponse.json({ image }, { status: 201 })
     }
 
-    const ext = file.name.split(".").pop() || "png"
-    const fileName = `references/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
-    const bytes = await file.arrayBuffer()
-    const { error: uploadError } = await supabaseAdmin.storage.from("references").upload(fileName, bytes, { contentType: file.type })
-    if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 500 })
-
-    const { data: urlData } = supabaseAdmin.storage.from("references").getPublicUrl(fileName)
-    const url = urlData.publicUrl
-
+    const { url, categoryId, difficulty, duration, isPublished } = await request.json()
+    if (!url || !categoryId || !duration) {
+      return NextResponse.json({ error: "url, categoryId, and duration required" }, { status: 400 })
+    }
     const image = await prisma.referenceImage.create({
-      data: { url, categoryId, isPublished, duration, difficulty },
+      data: { url, categoryId, difficulty, duration, isPublished: isPublished ?? true },
     })
     await prisma.category.update({ where: { id: categoryId }, data: { imageCount: { increment: 1 } } })
-
     return NextResponse.json({ image }, { status: 201 })
   } catch (e: any) {
     return NextResponse.json({ error: e.message || "Upload failed" }, { status: 500 })
