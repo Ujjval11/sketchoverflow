@@ -1,17 +1,21 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useEffect, useState } from "react"
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<any[]>([])
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    setLoading(true)
     fetch("/api/admin/users")
       .then(r => r.json())
       .then(d => setUsers(d.users || []))
       .catch(() => {})
+      .finally(() => setLoading(false))
   }, [])
 
   async function toggleRole(userId: string, currentRole: string) {
@@ -24,47 +28,144 @@ export default function AdminUsersPage() {
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u))
   }
 
+  function fmt(iso?: string) {
+    if (!iso) return "—"
+    return new Date(iso).toLocaleString()
+  }
+
+  function fmtDuration(seconds: number) {
+    const h = Math.floor(seconds / 3600)
+    const m = Math.floor((seconds % 3600) / 60)
+    const s = seconds % 60
+    if (h > 0) return `${h}h ${m}m`
+    if (m > 0) return `${m}m ${s}s`
+    return `${s}s`
+  }
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-8">
+        <div className="flex items-center justify-center py-20">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 space-y-8">
       <div>
         <h1 className="text-3xl font-bold">User Management</h1>
-        <p className="text-muted-foreground mt-1">Manage user roles and access</p>
+        <p className="text-muted-foreground mt-1">{users.length} users</p>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/20">
-                  <th className="text-left p-4 font-medium">Name</th>
-                  <th className="text-left p-4 font-medium">Email</th>
-                  <th className="text-left p-4 font-medium">Role</th>
-                  <th className="text-left p-4 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((user: any) => (
-                  <tr key={user.id} className="border-b border-border">
-                    <td className="p-4">{user.name || "—"}</td>
-                    <td className="p-4">{user.email}</td>
-                    <td className="p-4">
-                      <span className={`text-xs px-2 py-0.5 rounded ${user.role === "admin" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
-                        {user.role}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <Button size="sm" variant="outline" onClick={() => toggleRole(user.id, user.role)}>
-                        Make {user.role === "admin" ? "User" : "Admin"}
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="space-y-4">
+        {users.map((user: any) => {
+          const isOpen = expanded.has(user.id)
+          const p = user.profile || {}
+          return (
+            <Card key={user.id}>
+              <CardHeader className="py-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <button onClick={() => setExpanded(prev => { const n = new Set(prev); isOpen ? n.delete(user.id) : n.add(user.id); return n })}
+                      className="text-muted-foreground hover:text-foreground transition-colors">
+                      <svg className={`w-4 h-4 transition-transform ${isOpen ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                    </button>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold">{user.name || "—"}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded ${user.role === "admin" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{user.role}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{user.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => toggleRole(user.id, user.role)}>
+                      Make {user.role === "admin" ? "User" : "Admin"}
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+
+              {isOpen && (
+                <CardContent className="border-t border-border pt-4 space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="rounded-lg bg-muted/30 p-3">
+                      <p className="text-xs text-muted-foreground">Level</p>
+                      <p className="text-lg font-bold">{user.level ?? 0}</p>
+                    </div>
+                    <div className="rounded-lg bg-muted/30 p-3">
+                      <p className="text-xs text-muted-foreground">XP</p>
+                      <p className="text-lg font-bold">{user.xp ?? 0}</p>
+                    </div>
+                    <div className="rounded-lg bg-muted/30 p-3">
+                      <p className="text-xs text-muted-foreground">Coins</p>
+                      <p className="text-lg font-bold">{user.coins ?? 0}</p>
+                    </div>
+                    <div className="rounded-lg bg-muted/30 p-3">
+                      <p className="text-xs text-muted-foreground">Streak</p>
+                      <p className="text-lg font-bold">{user.streak ?? 0}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="rounded-lg bg-muted/30 p-3">
+                      <p className="text-xs text-muted-foreground">Sessions</p>
+                      <p className="text-lg font-bold">{user.totalSessions ?? 0}</p>
+                    </div>
+                    <div className="rounded-lg bg-muted/30 p-3">
+                      <p className="text-xs text-muted-foreground">Total Practice Time</p>
+                      <p className="text-lg font-bold">{fmtDuration(user.totalTimeSpent ?? 0)}</p>
+                    </div>
+                    <div className="rounded-lg bg-muted/30 p-3">
+                      <p className="text-xs text-muted-foreground">Images Worked</p>
+                      <p className="text-lg font-bold">{user.imagesWorked ?? 0}</p>
+                    </div>
+                    <div className="rounded-lg bg-muted/30 p-3">
+                      <p className="text-xs text-muted-foreground">Categories</p>
+                      <p className="text-lg font-bold truncate" title={user.categoriesPracticed}>{user.categoriesPracticed || "—"}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="rounded-lg bg-muted/30 p-3 space-y-1">
+                      <p className="text-xs text-muted-foreground font-semibold">Account</p>
+                      <p className="text-xs"><span className="text-muted-foreground">Joined:</span> {fmt(user.createdAt)}</p>
+                      <p className="text-xs"><span className="text-muted-foreground">Last Login:</span> {fmt(user.lastLogin)}</p>
+                    </div>
+                    <div className="rounded-lg bg-muted/30 p-3 space-y-1">
+                      <p className="text-xs text-muted-foreground font-semibold">Personal</p>
+                      {p.bio && <p className="text-xs"><span className="text-muted-foreground">Bio:</span> {p.bio}</p>}
+                      {p.age && <p className="text-xs"><span className="text-muted-foreground">Age:</span> {p.age}</p>}
+                      {p.city && p.country && <p className="text-xs"><span className="text-muted-foreground">Location:</span> {p.city}, {p.country}</p>}
+                      {p.phone && <p className="text-xs"><span className="text-muted-foreground">Phone:</span> {p.phone}</p>}
+                      {!p.bio && !p.age && !p.city && <p className="text-xs text-muted-foreground">No details provided</p>}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="rounded-lg bg-muted/30 p-3 space-y-1">
+                      <p className="text-xs text-muted-foreground font-semibold">Education</p>
+                      {p.educationLevel && <p className="text-xs"><span className="text-muted-foreground">Level:</span> {p.educationLevel}</p>}
+                      {p.institution && <p className="text-xs"><span className="text-muted-foreground">Institution:</span> {p.institution}</p>}
+                      {p.exam && <p className="text-xs"><span className="text-muted-foreground">Exam:</span> {p.exam}</p>}
+                      {p.studyMode && <p className="text-xs"><span className="text-muted-foreground">Study Mode:</span> {p.studyMode}</p>}
+                      {!p.educationLevel && <p className="text-xs text-muted-foreground">No education details</p>}
+                    </div>
+                    <div className="rounded-lg bg-muted/30 p-3 space-y-1">
+                      <p className="text-xs text-muted-foreground font-semibold">Interests & Goals</p>
+                      {p.goals && <p className="text-xs"><span className="text-muted-foreground">Goals:</span> {p.goals}</p>}
+                      {p.interests && <p className="text-xs"><span className="text-muted-foreground">Interests:</span> {p.interests}</p>}
+                      {!p.goals && !p.interests && <p className="text-xs text-muted-foreground">No goals or interests</p>}
+                    </div>
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+          )
+        })}
+      </div>
     </div>
   )
 }

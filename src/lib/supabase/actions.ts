@@ -17,15 +17,17 @@ export async function signInWithEmail(formData: FormData) {
   if (error) return { error: error.message }
   if (data.user) {
     const existing = await prisma.user.findUnique({ where: { id: data.user.id }, select: { id: true } })
+    const now = new Date().toISOString()
     if (!existing) {
-      const now = new Date().toISOString()
       const name = data.user.user_metadata?.full_name || email.split("@")[0]
-      await prisma.user.create({ data: { id: data.user.id, email, name, createdAt: now, updatedAt: now } })
+      await prisma.user.create({ data: { id: data.user.id, email, name, createdAt: now, updatedAt: now, lastLogin: now } })
       await prisma.profile.upsert({
         where: { userId: data.user.id },
         update: {},
         create: { userId: data.user.id },
       })
+    } else {
+      await prisma.user.update({ where: { id: data.user.id }, data: { lastLogin: now } })
     }
   }
   revalidatePath("/", "layout")
