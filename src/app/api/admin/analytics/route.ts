@@ -28,13 +28,12 @@ export async function GET() {
     const monthAgoStr = monthAgo.toISOString()
 
     const [
-      totalUsers, activeUsers, totalImages, totalSessions,
-      sessionsToday, sessionsWeek, sessionsMonth,
+      totalUsers, activeUsers,
+      totalSessions, sessionsToday, sessionsWeek, sessionsMonth,
       allUsers, allSessions, allImages, allCategories,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { lastLogin: { gte: weekAgoStr } } }),
-      prisma.referenceImage.count(),
       prisma.practiceSession.count(),
       prisma.practiceSession.count({ where: { completedAt: { gte: todayStr } } }),
       prisma.practiceSession.count({ where: { completedAt: { gte: weekAgoStr } } }),
@@ -47,9 +46,14 @@ export async function GET() {
 
     const catMap = new Map(allCategories.map((c: any) => [c.id, c.name]))
 
+    const uniqueImages = new Map<string, any>()
+    for (const img of allImages) {
+      const key = img.url
+      if (!uniqueImages.has(key)) uniqueImages.set(key, img)
+    }
     const imageCountByCat: Record<string, number> = {}
     const imageCountByDiff: Record<string, number> = {}
-    for (const img of allImages) {
+    for (const img of uniqueImages.values()) {
       imageCountByCat[img.categoryId] = (imageCountByCat[img.categoryId] || 0) + 1
       imageCountByDiff[img.difficulty] = (imageCountByDiff[img.difficulty] || 0) + 1
     }
@@ -85,7 +89,7 @@ export async function GET() {
 
     const userCounts = { total: totalUsers, active7d: activeUsers }
     const sessionCounts = { total: totalSessions, today: sessionsToday, week: sessionsWeek, month: sessionsMonth }
-    const imageCounts = { total: totalImages }
+    const imageCounts = { total: uniqueImages.size }
     const timeStats = { totalSeconds: totalPracticeTime, avgSeconds: avgSessionDuration, skipped: skippedSessions }
 
     return NextResponse.json({
