@@ -42,7 +42,9 @@ export async function signUp(formData: FormData) {
   const educationLevel = formData.get("educationLevel") as string
   const city = formData.get("city") as string
 
-  const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name } } })
+  const { data, error } = await supabaseAdmin.auth.admin.createUser({
+    email, password, email_confirm: true, user_metadata: { full_name: name },
+  })
   if (error) return { error: error.message }
   if (data.user) {
     await prisma.user.upsert({
@@ -55,7 +57,6 @@ export async function signUp(formData: FormData) {
       update: { bio, goals, institution, educationLevel, city },
       create: { userId: data.user.id, bio, goals, institution, educationLevel, city },
     })
-    await supabaseAdmin.auth.admin.updateUserById(data.user.id, { email_confirm: true })
   }
   revalidatePath("/", "layout")
   redirect("/")
