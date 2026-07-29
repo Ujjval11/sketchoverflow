@@ -10,13 +10,18 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    setLoading(true)
-    fetch("/api/admin/users")
-      .then(r => r.json())
-      .then(d => setUsers(d.users || []))
-      .catch(() => {})
-      .finally(() => setLoading(false))
+    loadUsers()
   }, [])
+
+  async function loadUsers() {
+    setLoading(true)
+    try {
+      const r = await fetch("/api/admin/users")
+      const d = await r.json()
+      setUsers(d.users || [])
+    } catch {}
+    setLoading(false)
+  }
 
   async function toggleRole(userId: string, currentRole: string) {
     const newRole = currentRole === "admin" ? "user" : "admin"
@@ -26,6 +31,16 @@ export default function AdminUsersPage() {
       body: JSON.stringify({ userId, role: newRole }),
     })
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u))
+  }
+
+  async function userAction(userId: string, action: string) {
+    if (action === "delete" && !confirm("Delete this user permanently? This cannot be undone.")) return
+    await fetch("/api/admin/user-action", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, action }),
+    })
+    loadUsers()
   }
 
   function fmt(iso?: string) {
@@ -76,13 +91,26 @@ export default function AdminUsersPage() {
                       <div className="flex items-center gap-2">
                         <span className="font-semibold">{user.name || "—"}</span>
                         <span className={`text-xs px-2 py-0.5 rounded ${user.role === "admin" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{user.role}</span>
+                        {user.banned && <span className="text-xs px-2 py-0.5 rounded bg-error/10 text-error">Disabled</span>}
                       </div>
                       <p className="text-xs text-muted-foreground">{user.email}</p>
                     </div>
                   </div>
                   <div className="flex gap-2">
                     <Button size="sm" variant="outline" onClick={() => toggleRole(user.id, user.role)}>
-                      Make {user.role === "admin" ? "User" : "Admin"}
+                      {user.role === "admin" ? "Demote" : "Make Admin"}
+                    </Button>
+                    {!user.banned ? (
+                      <Button size="sm" variant="outline" className="text-orange-600 border-orange-300 hover:bg-orange-50" onClick={() => userAction(user.id, "ban")}>
+                        Disable
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="outline" onClick={() => userAction(user.id, "unban")}>
+                        Enable
+                      </Button>
+                    )}
+                    <Button size="sm" variant="outline" className="text-error border-error/30 hover:bg-error/5" onClick={() => userAction(user.id, "delete")}>
+                      Delete
                     </Button>
                   </div>
                 </div>

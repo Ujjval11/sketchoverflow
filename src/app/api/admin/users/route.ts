@@ -52,6 +52,7 @@ export async function GET() {
         email: u.email,
         name: u.name,
         role: u.role,
+        banned: u.banned,
         xp: u.xp,
         level: u.level,
         coins: u.coins,

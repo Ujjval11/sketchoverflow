@@ -16,7 +16,8 @@ export async function signInWithEmail(formData: FormData) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) return { error: error.message }
   if (data.user) {
-    const existing = await prisma.user.findUnique({ where: { id: data.user.id }, select: { id: true } })
+    const existing = await prisma.user.findUnique({ where: { id: data.user.id }, select: { id: true, banned: true } })
+    if (existing?.banned) return { error: "Your account has been disabled. Contact support." }
     const now = new Date().toISOString()
     if (!existing) {
       const name = data.user.user_metadata?.full_name || email.split("@")[0]
