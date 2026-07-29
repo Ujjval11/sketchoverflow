@@ -380,13 +380,13 @@ export default function AdminPage() {
       {activeTab === "categories" && (
         <div className="space-y-6">
           {loading && <div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}
-          {!loading && (
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">{categories.length} categories</p>
-            <Button onClick={() => { setCatForm({ name: "", description: "", sortOrder: 0, id: "" }); setShowCatForm(!showCatForm) }}>
-              {showCatForm ? "Cancel" : "+ Add Category"}
-            </Button>
-          </div>
+          {!loading && (<>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">{categories.length} categories</p>
+              <Button onClick={() => { setCatForm({ name: "", description: "", sortOrder: 0, id: "" }); setShowCatForm(!showCatForm) }}>
+                {showCatForm ? "Cancel" : "+ Add Category"}
+              </Button>
+            </div>
 
           {showCatForm && (
             <Card>
@@ -500,7 +500,7 @@ export default function AdminPage() {
               </CardContent>}
             </Card>
           )})}
-          )}
+          </>)}
         </div>
       )}
 
