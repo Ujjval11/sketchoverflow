@@ -13,8 +13,21 @@ export async function signInWithEmail(formData: FormData) {
   const password = formData.get("password") as string
   const redirectTo = (formData.get("redirect") as string) || "/"
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) return { error: error.message }
+  if (data.user) {
+    const existing = await prisma.user.findUnique({ where: { id: data.user.id }, select: { id: true } })
+    if (!existing) {
+      const now = new Date().toISOString()
+      const name = data.user.user_metadata?.full_name || email.split("@")[0]
+      await prisma.user.create({ data: { id: data.user.id, email, name, createdAt: now, updatedAt: now } })
+      await prisma.profile.upsert({
+        where: { userId: data.user.id },
+        update: {},
+        create: { userId: data.user.id },
+      })
+    }
+  }
   revalidatePath("/", "layout")
   redirect(redirectTo)
 }
@@ -47,10 +60,11 @@ export async function signUp(formData: FormData) {
   })
   if (error) return { error: error.message }
   if (data.user) {
+    const now = new Date().toISOString()
     await prisma.user.upsert({
       where: { id: data.user.id },
       update: { name, email },
-      create: { id: data.user.id, email, name },
+      create: { id: data.user.id, email, name, createdAt: now, updatedAt: now },
     })
     await prisma.profile.upsert({
       where: { userId: data.user.id },
