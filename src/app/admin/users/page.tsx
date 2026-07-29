@@ -1,11 +1,13 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useEffect, useState } from "react"
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<any[]>([])
+  const [search, setSearch] = useState("")
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
 
@@ -74,8 +76,15 @@ export default function AdminUsersPage() {
         <p className="text-muted-foreground mt-1">{users.length} users</p>
       </div>
 
+      <Input placeholder="Search by name or email..." value={search} onChange={(e) => setSearch(e.target.value)}
+        className="max-w-sm" />
+
       <div className="space-y-4">
-        {users.map((user: any) => {
+        {users.filter((u) => {
+          if (!search.trim()) return true
+          const q = search.toLowerCase()
+          return (u.name || "").toLowerCase().includes(q) || (u.email || "").toLowerCase().includes(q)
+        }).map((user: any) => {
           const isOpen = expanded.has(user.id)
           const p = user.profile || {}
           return (
