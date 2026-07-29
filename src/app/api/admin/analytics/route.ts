@@ -23,21 +23,25 @@ export async function GET() {
     const monthAgo = new Date(today)
     monthAgo.setDate(monthAgo.getDate() - 29)
 
+    const todayStr = today.toISOString()
+    const weekAgoStr = weekAgo.toISOString()
+    const monthAgoStr = monthAgo.toISOString()
+
     const [
       totalUsers, activeUsers, totalImages, totalSessions,
       sessionsToday, sessionsWeek, sessionsMonth,
       allUsers, allSessions, allImages, allCategories,
     ] = await Promise.all([
       prisma.user.count(),
-      prisma.user.count({ where: { lastLogin: { gte: weekAgo } } }),
+      prisma.user.count({ where: { lastLogin: { gte: weekAgoStr } } }),
       prisma.referenceImage.count(),
       prisma.practiceSession.count(),
-      prisma.practiceSession.count({ where: { completedAt: { gte: today } } }),
-      prisma.practiceSession.count({ where: { completedAt: { gte: weekAgo } } }),
-      prisma.practiceSession.count({ where: { completedAt: { gte: monthAgo } } }),
-      prisma.user.findMany({ orderBy: { createdAt: "desc" } }),
-      prisma.practiceSession.findMany({ orderBy: { completedAt: "desc" } }),
-      prisma.referenceImage.findMany(),
+      prisma.practiceSession.count({ where: { completedAt: { gte: todayStr } } }),
+      prisma.practiceSession.count({ where: { completedAt: { gte: weekAgoStr } } }),
+      prisma.practiceSession.count({ where: { completedAt: { gte: monthAgoStr } } }),
+      prisma.user.findMany({ orderBy: { createdAt: "desc" }, take: 2000 }),
+      prisma.practiceSession.findMany({ orderBy: { completedAt: "desc" }, take: 2000 }),
+      prisma.referenceImage.findMany({ take: 3000 }),
       prisma.category.findMany(),
     ])
 
