@@ -15,6 +15,7 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState("categories")
   const [categories, setCategories] = useState<any[]>([])
   const [analytics, setAnalytics] = useState<any>({})
+  const [loading, setLoading] = useState(false)
   const [challenges, setChallenges] = useState<any[]>([])
   const [catForm, setCatForm] = useState({ name: "", description: "", sortOrder: 0, id: "" })
   const [showCatForm, setShowCatForm] = useState(false)
@@ -51,6 +52,7 @@ export default function AdminPage() {
   }, [activeTab])
 
   async function loadCategories() {
+    setLoading(true)
     try {
       const r = await fetch("/api/admin/categories")
       const d = await r.json()
@@ -78,15 +80,18 @@ export default function AdminPage() {
       )
       setCategories(withImages)
     } catch (e: any) { setApiError("Failed to load categories") }
+    finally { setLoading(false) }
   }
 
   async function loadAnalytics() {
+    setLoading(true)
     try {
       const r = await fetch("/api/admin/analytics")
       const d = await r.json()
       if (d.error) { setApiError(d.error); return }
       setAnalytics(d)
     } catch { setApiError("Failed to load analytics") }
+    finally { setLoading(false) }
   }
 
   async function loadChallenges() {
@@ -374,6 +379,8 @@ export default function AdminPage() {
 
       {activeTab === "categories" && (
         <div className="space-y-6">
+          {loading && <div className="flex items-center justify-center py-12"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>}
+          {!loading && (
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">{categories.length} categories</p>
             <Button onClick={() => { setCatForm({ name: "", description: "", sortOrder: 0, id: "" }); setShowCatForm(!showCatForm) }}>
@@ -493,6 +500,7 @@ export default function AdminPage() {
               </CardContent>}
             </Card>
           )})}
+          )}
         </div>
       )}
 
@@ -745,10 +753,16 @@ export default function AdminPage() {
 
       {activeTab === "analytics" && (
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard label="Total Users" value={String(analytics.totalUsers || 0)} />
-          <StatCard label="Sessions Today" value={String(analytics.todaySessions || 0)} />
-          <StatCard label="Total Images" value={String(analytics.totalImages || 0)} />
-          <StatCard label="Total Sessions" value={String(analytics.totalSessions || 0)} />
+          {loading ? (
+            <div className="col-span-full flex items-center justify-center py-12"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+          ) : (
+            <>
+              <StatCard label="Total Users" value={String(analytics.totalUsers || 0)} />
+              <StatCard label="Sessions Today" value={String(analytics.todaySessions || 0)} />
+              <StatCard label="Total Images" value={String(analytics.totalImages || 0)} />
+              <StatCard label="Total Sessions" value={String(analytics.totalSessions || 0)} />
+            </>
+          )}
         </div>
       )}
 
