@@ -57,6 +57,7 @@ export async function signUp(formData: FormData) {
       update: { bio, goals, institution, educationLevel, city },
       create: { userId: data.user.id, bio, goals, institution, educationLevel, city },
     })
+    await supabase.auth.signInWithPassword({ email, password })
   }
   revalidatePath("/", "layout")
   redirect("/")
