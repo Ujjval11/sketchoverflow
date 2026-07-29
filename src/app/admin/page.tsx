@@ -752,15 +752,86 @@ export default function AdminPage() {
       )}
 
       {activeTab === "analytics" && (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="space-y-6">
           {loading ? (
-            <div className="col-span-full flex items-center justify-center py-12"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
+            <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>
           ) : (
             <>
-              <StatCard label="Total Users" value={String(analytics.totalUsers || 0)} />
-              <StatCard label="Sessions Today" value={String(analytics.todaySessions || 0)} />
-              <StatCard label="Total Images" value={String(analytics.totalImages || 0)} />
-              <StatCard label="Total Sessions" value={String(analytics.totalSessions || 0)} />
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <StatCard label="Total Users" value={String(analytics.userCounts?.total ?? 0)} />
+                <StatCard label="Active (7d)" value={String(analytics.userCounts?.active7d ?? 0)} />
+                <StatCard label="Total Images" value={String(analytics.imageCounts?.total ?? 0)} />
+                <StatCard label="Total Sessions" value={String(analytics.sessionCounts?.total ?? 0)} />
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <StatCard label="Sessions Today" value={String(analytics.sessionCounts?.today ?? 0)} />
+                <StatCard label="Sessions (7d)" value={String(analytics.sessionCounts?.week ?? 0)} />
+                <StatCard label="Sessions (30d)" value={String(analytics.sessionCounts?.month ?? 0)} />
+                <StatCard label="Avg Duration" value={fmtDuration(analytics.timeStats?.avgSeconds ?? 0)} />
+              </div>
+
+              <Card>
+                <CardHeader><CardTitle className="text-base">Sessions Per Day (last 30)</CardTitle></CardHeader>
+                <CardContent>
+                  <BarChart data={analytics.sessionsPerDay || []} />
+                </CardContent>
+              </Card>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader><CardTitle className="text-base">Images Per Category</CardTitle></CardHeader>
+                  <CardContent>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-left text-muted-foreground">
+                          <th className="pb-2 font-medium">Category</th>
+                          <th className="pb-2 font-medium text-right">Images</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(analytics.imagesPerCategory || []).map((c: any) => (
+                          <tr key={c.name} className="border-b border-border/50">
+                            <td className="py-2">{c.name}</td>
+                            <td className="py-2 text-right font-mono">{c.images}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader><CardTitle className="text-base">Images Per Difficulty</CardTitle></CardHeader>
+                  <CardContent>
+                    <BarChart data={analytics.imagesPerDifficulty || []} labelKey="difficulty" valueKey="images" />
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card>
+                <CardHeader><CardTitle className="text-base">Session Summary</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Total</p>
+                      <p className="text-xl font-bold">{analytics.sessionCounts?.total ?? 0}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Skipped</p>
+                      <p className="text-xl font-bold">{analytics.timeStats?.skipped ?? 0}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Total Practice Time</p>
+                      <p className="text-xl font-bold">{fmtDuration(analytics.timeStats?.totalSeconds ?? 0)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Avg / Session</p>
+                      <p className="text-xl font-bold">{fmtDuration(analytics.timeStats?.avgSeconds ?? 0)}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </>
           )}
         </div>
@@ -831,5 +902,35 @@ function StatCard({ label, value }: { label: string; value: string }) {
         <p className="text-2xl font-bold">{value}</p>
       </CardContent>
     </Card>
+  )
+}
+
+function fmtDuration(seconds: number) {
+  if (!seconds) return "0s"
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = seconds % 60
+  if (h > 0) return `${h}h ${m}m`
+  if (m > 0) return `${m}m ${s}s`
+  return `${s}s`
+}
+
+function BarChart({ data, labelKey = "date", valueKey = "count" }: { data: any[]; labelKey?: string; valueKey?: string }) {
+  if (!data.length) return <p className="text-sm text-muted-foreground text-center py-8">No data</p>
+  const max = Math.max(...data.map((d) => d[valueKey]), 1)
+  return (
+    <div className="flex items-end gap-1 h-40">
+      {data.map((d, i) => {
+        const pct = (d[valueKey] / max) * 100
+        const label = (d[labelKey] || "").slice(-5)
+        return (
+          <div key={i} className="flex-1 flex flex-col items-center gap-0.5 h-full justify-end">
+            <span className="text-[10px] text-muted-foreground font-mono">{d[valueKey]}</span>
+            <div className="w-full bg-primary/60 rounded-t" style={{ height: `${Math.max(pct, 1)}%` }} />
+            <span className="text-[9px] text-muted-foreground truncate w-full text-center">{label}</span>
+          </div>
+        )
+      })}
+    </div>
   )
 }
